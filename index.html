@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus Hear: Tarkkuus-Audiometria</title>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXX');
+    </script>
+    <style>
+        body { font-family: -apple-system, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; background: #f8f9fa; color: #333; }
+        .card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .btn { background: #007bff; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-size: 1.1em; font-weight: bold; transition: 0.2s; }
+        .btn:hover { background: #0056b3; }
+        .btn-save { background: #28a745; margin-top: 10px; }
+        .btn-stop { background: #dc3545; margin-top: 10px; }
+        .stats { display: flex; justify-content: space-around; background: #f1f3f5; padding: 15px; border-radius: 10px; margin-bottom: 20px; font-weight: bold; }
+        .slider-group { margin: 20px 0; }
+        .val-display { font-size: 1.5em; color: #007bff; font-weight: bold; }
+        input[type="range"] { width: 100%; height: 15px; border-radius: 5px; background: #ddd; outline: none; margin: 10px 0; }
+        .history-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 0.9em; }
+        .tag { background: #e9ecef; padding: 2px 8px; border-radius: 4px; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>Tarkkuustesti v18</h1>
+        <p>Määritä kuulokynnys 200 Hz välein. Tämä data auttaa audionomia säätämään laitteesi oikein.</p>
+        <div class="stats">
+            <div>Mittaukset: <span id="statCount">0</span></div>
+            <div>Onnistumis-%: <span id="statRate">0</span>%</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="slider-group">
+            <label>Taajuus: <span id="freqVal" class="val-display">2000</span> Hz</label>
+            <input type="range" id="freqSlider" min="1000" max="8000" step="200" value="2000" oninput="updateValues()">
+        </div>
+
+        <div class="slider-group">
+            <label>Voimakkuus: <span id="volVal" class="val-display">-40</span> dB</label>
+            <input type="range" id="volSlider" min="-80" max="0" step="1" value="-40" oninput="updateValues()">
+        </div>
+
+        <button id="playBtn" onclick="toggleTone()" class="btn">Soita piippaus</button>
+        <button onclick="stopTone()" class="btn btn-stop">Pysäytä</button>
+        <button onclick="saveResult()" class="btn btn-save">Tallenna kynnysarvo</button>
+    </div>
+
+    <div class="card">
+        <h3>Tallennettu käyrä</h3>
+        <div id="log"></div>
+        <button onclick="clearLogs()" style="background:none; border:none; color:red; cursor:pointer; font-size:0.8em; margin-top:15px;">Tyhjennä historia</button>
+    </div>
+
+    <script>
+        let audioCtx, oscillator, gainNode;
+        let isPlaying = false;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                gainNode = audioCtx.createGain();
+                gainNode.connect(audioCtx.destination);
+            }
+        }
+
+        function updateValues() {
+            const freq = document.getElementById('freqSlider').value;
+            const db = document.getElementById('volSlider').value;
+            document.getElementById('freqVal').innerText = freq;
+            document.getElementById('volVal').innerText = db;
+
+            if (isPlaying && oscillator) {
+                oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.05);
+                const gain = Math.pow(10, db / 20);
+                gainNode.gain.setTargetAtTime(gain, audioCtx.currentTime, 0.05);
+            }
+        }
+
+        function toggleTone() {
+            initAudio();
+            if (isPlaying) {
+                stopTone();
+            } else {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                oscillator = audioCtx.createOscillator();
+                oscillator.type = 'sine';
+                oscillator.frequency.value = document.getElementById('freqSlider').value;
+                
+                const db = document.getElementById('volSlider').value;
+                const gain = Math.pow(10, db / 20);
+                gainNode.gain.value = gain;
+
+                oscillator.connect(gainNode);
+                oscillator.start();
+                isPlaying = true;
+                document.getElementById('playBtn').innerText = "Ääni soi...";
+                
+                // Analytics-tapahtuma
+                gtag('event', 'play_tone', { 'frequency': oscillator.frequency.value });
+            }
+        }
+
+        function stopTone() {
+            if (oscillator) {
+                oscillator.stop();
+                oscillator.disconnect();
+            }
+            isPlaying = false;
+            document.getElementById('playBtn').innerText = "Soita piippaus";
+        }
+
+        function saveResult() {
+            const freq = document.getElementById('freqSlider').value;
+            const db = document.getElementById('volSlider').value;
+            let history = JSON.parse(localStorage.getItem('precision_v18') || "[]");
+            
+            history.push({ freq, db, date: new Date().toLocaleString('fi-FI') });
+            history.sort((a, b) => a.freq - b.freq);
+            localStorage.setItem('precision_v18', JSON.stringify(history));
+            
+            // Analytics-tapahtuma: Tallennettu tulos
+            gtag('event', 'save_threshold', { 'frequency': freq, 'decibels': db });
+            
+            stopTone();
+            renderLog();
+            updateStats();
+        }
+
+        function updateStats() {
+            const history = JSON.parse(localStorage.getItem('precision_v18') || "[]");
+            document.getElementById('statCount').innerText = history.length;
+            // Esimerkki laskennasta: kuinka moni ylittää "normaalin" kynnyksen (esim. -20dB)
+            const abnormal = history.filter(h => h.db > -20).length;
+            const rate = history.length > 0 ? Math.round(((history.length - abnormal) / history.length) * 100) : 100;
+            document.getElementById('statRate').innerText = rate;
+        }
+
+        function renderLog() {
+            const history = JSON.parse(localStorage.getItem('precision_v18') || "[]");
+            document.getElementById('log').innerHTML = history.map(h => `
+                <div class="history-item">
+                    <span><strong>${h.freq} Hz</strong></span>
+                    <span><span class="tag">${h.db} dB</span></span>
+                </div>
+            `).join('');
+        }
+
+        function clearLogs() {
+            if(confirm("Haluatko poistaa tallennetun käyrän?")) {
+                localStorage.removeItem('precision_v18');
+                renderLog();
+                updateStats();
+            }
+        }
+
+        updateStats();
+        renderLog();
+    </script>
+</body>
+</html>
