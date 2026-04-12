@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Focus Precision v19: Pystysuora Integraatio</title>
+    <title>Focus Precision v19.1: Lääketieteellinen Tarkkuus</title>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXX"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -14,74 +14,79 @@
     <style>
         body { font-family: -apple-system, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; background: #f8f9fa; color: #333; text-align: center; }
         .card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 20px; }
-        .btn-group { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
-        .btn { border: none; padding: 18px; border-radius: 8px; cursor: pointer; font-size: 1.1em; font-weight: bold; transition: 0.2s; color: white; }
+        .btn-group { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; visibility: hidden; }
+        .btn { border: none; padding: 18px; border-radius: 8px; cursor: pointer; font-size: 1.1em; font-weight: bold; transition: 0.2s; color: white; width: 100%; }
         .btn:disabled { background: #ccc !important; cursor: not-allowed; }
-        .btn-start { background: #007bff; width: 100%; }
+        .btn-start { background: #007bff; }
         .btn-no { background: #dc3545; }
         .btn-little { background: #fd7e14; }
         .btn-yes { background: #28a745; }
         .stats { display: flex; justify-content: space-around; background: #f1f3f5; padding: 10px; border-radius: 8px; margin-top: 15px; font-weight: bold; }
-        .ear-tag { padding: 4px 10px; border-radius: 4px; font-weight: bold; }
+        .ear-tag { padding: 4px 10px; border-radius: 4px; font-weight: bold; display: inline-block; margin-top: 10px; }
         .tag-l { background: #cfe2f3; color: #073763; }
         .tag-r { background: #f4cccc; color: #660000; }
+        #freqDisplay { font-size: 2em; color: #007bff; font-weight: bold; margin: 15px 0; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h1>Focus Precision v19</h1>
-        <p>Tarkkuustesti (50/100/200Hz askeleilla). Testataan kumpikin korva erikseen.</p>
+        <h1>Focus Precision v19.1</h1>
+        <p>Tarkkuustesti stereo-panoroinnilla ja puhtaalla äänellä.</p>
         <div id="statusArea">
             <button id="startBtn" onclick="startTestSequence()" class="btn btn-start">Aloita testi</button>
         </div>
         <div class="stats">
-            <div>Mittaukset: <span id="statCount">0</span></div>
-            <div>Onnistumis-%: <span id="statRate">0</span>%</div>
+            <div>Mittaustila: <span id="testStatusTag" class="tag-l">Valmis</span></div>
+            <div>Pisteitä: <span id="statCount">0</span></div>
         </div>
     </div>
 
     <div class="card" id="testArea" style="display:none;">
         <h3>Käynnissä: <span id="currentEar" class="ear-tag tag-l">Vasen korva</span></h3>
-        <p>Nyt testataan taajuutta: <strong><span id="currentFreq">--</span> Hz</strong></p>
+        <div id="freqDisplay"><span id="currentFreq">--</span> Hz</div>
         
-        <button id="playBtn" onclick="playCurrentTone()" class="btn btn-start" style="width:100%;">Soita piippaus</button>
+        <button id="playBtn" onclick="playCurrentTone()" class="btn btn-start">Soita ääni</button>
         
-        <div class="btn-group" id="inputBtns" style="visibility:hidden;">
-            <button onclick="handleResponse('no')" class="btn btn-no">En kuule mitään</button>
-            <button onclick="handleResponse('little')" class="btn btn-little">Kuulen vain vähän</button>
+        <div class="btn-group" id="inputBtns">
             <button onclick="handleResponse('yes')" class="btn btn-yes">Kuulen selvästi</button>
+            <button onclick="handleResponse('little')" class="btn btn-little">Kuulen vain vähän</button>
+            <button onclick="handleResponse('no')" class="btn btn-no">En kuule mitään</button>
         </div>
     </div>
 
     <div class="card" id="resultArea" style="display:none;">
         <h3>Testi suoritettu!</h3>
-        <p>Käyrä on tallennettu laitteellesi.</p>
+        <p>Kuulokäyrä on tallennettu laitteellesi.</p>
         <button onclick="clearHistory()" style="background:none; border:none; color:red; cursor:pointer; font-size:0.8em; margin-top:10px;">Tyhjennä historia</button>
     </div>
 
     <script>
-        let audioCtx, oscillator, gainNode;
+        let audioCtx, oscillator, gainNode, pannerNode;
         let isPlaying = false;
         
-        // Määritellään taajuuspolku ja askeleet
-        const lowFreqs = Array.from({length: 8}, (_, i) => 100 + i * 50); // 100, 150... 450 (8 kpl)
-        const midFreqs = Array.from({length: 16}, (_, i) => 500 + i * 100); // 500, 600... 2000 (16 kpl)
-        const highFreqs = Array.from({length: 16}, (_, i) => 2200 + i * 200); // 2200, 2400... 5200 (16 kpl)
+        // Askelletut taajuudet (50Hz / 100Hz / 200Hz)
+        const lowFreqs = Array.from({length: 8}, (_, i) => 100 + i * 50); 
+        const midFreqs = Array.from({length: 16}, (_, i) => 500 + i * 100);
+        const highFreqs = Array.from({length: 16}, (_, i) => 2200 + i * 200); 
         const allFreqs = [...lowFreqs, ...midFreqs, ...highFreqs];
 
-        let currentTest = {
-            ear: 'Vas',
+        let testState = {
+            ear: 'L', // L = Vasen, R = Oikea
             freqIndex: 0,
-            db: -40, // Aloitusvoimakkuus
-            saved: []
+            db: -40, // Aloitusvoimakkuus per taajuus
+            stage: 'seeking', // 'seeking' (haetaan kynnystä) tai 'confirming'
+            lastHeardDb: null
         };
 
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 gainNode = audioCtx.createGain();
-                gainNode.connect(audioCtx.destination);
+                pannerNode = audioCtx.createStereoPanner();
+                
+                // Ketju: Source -> Filter (puhtaus) -> Gain -> Panner -> Destination
+                gainNode.connect(pannerNode).connect(audioCtx.destination);
             }
         }
 
@@ -90,28 +95,34 @@
             if (audioCtx.state === 'suspended') audioCtx.resume();
             document.getElementById('statusArea').style.display = 'none';
             document.getElementById('testArea').style.display = 'block';
+            document.getElementById('testStatusTag').innerText = "Testaus käynnissä";
             updateDisplay();
         }
 
         function updateDisplay() {
             const earSpan = document.getElementById('currentEar');
-            earSpan.innerText = currentTest.ear === 'Vas' ? "Vasen korva (L)" : "Oikea korva (R)";
-            earSpan.className = `ear-tag tag-${currentTest.ear.toLowerCase()}`;
-            document.getElementById('currentFreq').innerText = allFreqs[currentTest.freqIndex];
+            earSpan.innerText = testState.ear === 'L' ? "Vasen korva (L)" : "Oikea korva (R)";
+            earSpan.className = `ear-tag tag-${testState.ear.toLowerCase()}`;
+            document.getElementById('currentFreq').innerText = allFreqs[testState.freqIndex];
             document.getElementById('inputBtns').style.visibility = 'hidden';
             document.getElementById('playBtn').disabled = false;
         }
 
         function playCurrentTone() {
             if (isPlaying) return;
-            oscillator = audioCtx.createOscillator();
-            oscillator.type = 'sine';
-            oscillator.frequency.value = allFreqs[currentTest.freqIndex];
+            initAudio();
             
-            // Muunnetaan dB lineaariseksi gainiksi
-            const gain = Math.pow(10, currentTest.db / 20);
-            gainNode.gain.setValueAtTime(0, audioCtx.currentTime); // Fade-in naksahduksen estämiseksi
-            gainNode.gain.linearRampToValueAtTime(gain, audioCtx.currentTime + 0.05);
+            oscillator = audioCtx.createOscillator();
+            oscillator.type = 'sine'; // Puhdas siniaalto
+            oscillator.frequency.value = allFreqs[testState.freqIndex];
+            
+            // Korjaus 1: Stereo-panorointi
+            pannerNode.pan.setValueAtTime(testState.ear === 'L' ? -1 : 1, audioCtx.currentTime);
+
+            // Korjaus 3: Puhdas ääni (Fade-in / Fade-out naksahduksen estämiseksi)
+            const gain = Math.pow(10, testState.db / 20);
+            gainNode.gain.setValueAtTime(0, audioCtx.currentTime); 
+            gainNode.gain.linearRampToValueAtTime(gain, audioCtx.currentTime + 0.05); // 50ms fade-in
 
             oscillator.connect(gainNode);
             oscillator.start();
@@ -120,7 +131,7 @@
             document.getElementById('inputBtns').style.visibility = 'visible';
             
             // Analytics
-            gtag('event', 'test_play', { 'ear': currentTest.ear, 'frequency': allFreqs[currentTest.freqIndex], 'decibels': currentTest.db });
+            gtag('event', 'test_play', { 'ear': testState.ear, 'frequency': allFreqs[testState.freqIndex], 'decibels': testState.db });
 
             // Sammutetaan 1.5 sekunnin kuluttua
             setTimeout(stopTone, 1500);
@@ -128,47 +139,68 @@
 
         function stopTone() {
             if (oscillator) {
-                gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.05); // Fade-out
+                // Korjaus 3: Fade-out särön estämiseksi
+                gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.05); // 50ms fade-out
                 setTimeout(() => {
                     oscillator.stop();
                     oscillator.disconnect();
                 }, 100);
             }
             isPlaying = false;
-            document.getElementById('playBtn').innerText = "Soita piippaus";
+            document.getElementById('playBtn').innerText = "Soita ääni";
         }
 
         function handleResponse(response) {
+            stopTone(); // Pysäytetään ääni jos se soi vielä
+
             // Analytics
-            gtag('event', 'test_response', { 'response_type': response, 'ear': currentTest.ear, 'frequency': allFreqs[currentTest.freqIndex] });
+            gtag('event', 'test_response', { 'response_type': response, 'ear': testState.ear, 'frequency': allFreqs[testState.freqIndex], 'decibels': testState.db });
 
+            // Korjaus 2: Uusi logiikka kuulokynnyksen hakuun
             if (response === 'yes') {
-                currentTest.db -= 10; // Lasketaan 10dB
-                if (currentTest.db < -90) currentTest.db = -90; // Minimivoimakkuus
+                // Kuuli selvästi: Lasketaan voimakkuutta 10dB ja yritetään uudelleen
+                testState.db -= 10;
+                if (testState.db < -90) testState.db = -90;
+                updateDisplay();
+                // Odotetaan hetki ja soitetaan automaattisesti uudelleen matalampi ääni
+                setTimeout(playCurrentTone, 500); 
+
             } else if (response === 'little') {
-                currentTest.db += 2; // Nostetaan 2dB
-                if (currentTest.db > 0) currentTest.db = 0; // Maksimivoimakkuus
-            } else if (response === 'no') {
-                currentTest.db += 5; // Nostetaan 5dB
-                if (currentTest.db > 0) currentTest.db = 0;
-            }
-
-            // Tallennetun pisteen kriteeri: jos "kuulen vain vähän" tai "kuulen selvästi"
-            if (response === 'yes' || response === 'little') {
+                // Kuuli vähän: Tämä on kynnysarvo. Tallennetaan ja siirrytään eteenpäin.
                 saveDataPoint();
-                currentTest.freqIndex++; // Siirrytään seuraavaan taajuuteen
-                // Palautetaan dB aloitusarvoon seuraavaa taajuutta varten
-                currentTest.db = allFreqs[currentTest.freqIndex] > 2000 ? -30 : -40;
-            }
+                moveToNextFrequency();
 
-            // Tarkistetaan testin tila
-            if (currentTest.freqIndex >= allFreqs.length) {
-                if (currentTest.ear === 'Vas') {
+            } else if (response === 'no') {
+                // Ei kuullut: Nostetaan voimakkuutta 5dB
+                testState.db += 5;
+                if (testState.db > 0) testState.db = 0;
+                updateDisplay();
+                setTimeout(playCurrentTone, 500);
+            }
+        }
+
+        function saveDataPoint() {
+            let saved = JSON.parse(localStorage.getItem('precision_curve_v19') || "[]");
+            saved.push({
+                ear: testState.ear,
+                freq: allFreqs[testState.freqIndex],
+                db: testState.db,
+                date: new Date().toLocaleDateString('fi-FI')
+            });
+            localStorage.setItem('precision_curve_v19', JSON.stringify(saved));
+            updateStats();
+        }
+
+        function moveToNextFrequency() {
+            testState.freqIndex++;
+            testState.db = -40; // Nollataan aloitusvoimakkuus seuraavalle taajuudelle
+
+            if (testState.freqIndex >= allFreqs.length) {
+                if (testState.ear === 'L') {
                     // Siirrytään oikeaan korvaan
-                    alert("Vasemman korvan testi valmis. Vaihda kuuloke oikeaan korvaan ja jatka.");
-                    currentTest.ear = 'Oik';
-                    currentTest.freqIndex = 0;
-                    currentTest.db = -40;
+                    alert("Vasemman korvan testi valmis. Vaihda kuuloke oikeaan korvaan ja paina OK aloittaaksesi.");
+                    testState.ear = 'R';
+                    testState.freqIndex = 0;
                     updateDisplay();
                 } else {
                     // Testi kokonaan valmis
@@ -179,43 +211,26 @@
             }
         }
 
-        function saveDataPoint() {
-            currentTest.saved.push({
-                ear: currentTest.ear,
-                freq: allFreqs[currentTest.freqIndex],
-                db: currentTest.db
-            });
-            // Tallenetaan lokaalisti, mutta ei näytetä käyrää vielä
-            localStorage.setItem('precision_curve', JSON.stringify(currentTest.saved));
-            updateStats();
-        }
-
         function updateStats() {
-            const saved = JSON.parse(localStorage.getItem('precision_curve') || "[]");
+            const saved = JSON.parse(localStorage.getItem('precision_curve_v19') || "[]");
             document.getElementById('statCount').innerText = saved.length;
-            // Esimerkkilaskenta onnistumisprosentille (normaali kuulo vs. heikentynyt)
-            const abnormal = saved.filter(s => s.db > -20).length;
-            const rate = saved.length > 0 ? Math.round(((saved.length - abnormal) / saved.length) * 100) : 100;
-            document.getElementById('statRate').innerText = rate;
         }
 
         function finishTest() {
             document.getElementById('testArea').style.display = 'none';
             document.getElementById('resultArea').style.display = 'block';
-            // Analytics
-            gtag('event', 'test_complete', { 'total_points': currentTest.saved.length });
+            document.getElementById('testStatusTag').innerText = "Testi valmis";
+            gtag('event', 'test_complete', { 'total_points': testState.saved.length });
         }
 
         function clearHistory() {
             if(confirm("Haluatko poistaa tallennetun käyrän?")) {
-                localStorage.removeItem('precision_curve');
-                location.reload(); // Ladataan sivu uudelleen tilan nollaamiseksi
+                localStorage.removeItem('precision_curve_v19');
+                location.reload();
             }
         }
 
-        // Alustetaan tilastot jos niitä on
         updateStats();
     </script>
 </body>
 </html>
- 
