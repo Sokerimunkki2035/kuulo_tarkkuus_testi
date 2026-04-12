@@ -3,52 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Focus Precision v19.1: Lääketieteellinen Tarkkuus</title>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXX"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-XXXXXX');
-    </script>
+    <title>Focus Precision v19.2: Vertailu & Historia</title>
     <style>
-        body { font-family: -apple-system, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; background: #f8f9fa; color: #333; text-align: center; }
+        body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; background: #f8f9fa; color: #333; text-align: center; }
         .card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 20px; }
-        .btn-group { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; visibility: hidden; }
-        .btn { border: none; padding: 18px; border-radius: 8px; cursor: pointer; font-size: 1.1em; font-weight: bold; transition: 0.2s; color: white; width: 100%; }
-        .btn:disabled { background: #ccc !important; cursor: not-allowed; }
+        .btn { border: none; padding: 18px; border-radius: 8px; cursor: pointer; font-size: 1.1em; font-weight: bold; transition: 0.2s; color: white; width: 100%; margin-bottom: 10px; }
         .btn-start { background: #007bff; }
         .btn-no { background: #dc3545; }
         .btn-little { background: #fd7e14; }
         .btn-yes { background: #28a745; }
-        .stats { display: flex; justify-content: space-around; background: #f1f3f5; padding: 10px; border-radius: 8px; margin-top: 15px; font-weight: bold; }
-        .ear-tag { padding: 4px 10px; border-radius: 4px; font-weight: bold; display: inline-block; margin-top: 10px; }
-        .tag-l { background: #cfe2f3; color: #073763; }
-        .tag-r { background: #f4cccc; color: #660000; }
-        #freqDisplay { font-size: 2em; color: #007bff; font-weight: bold; margin: 15px 0; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .result-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.8em; }
+        .result-table th, .result-table td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        .tag-l { color: #073763; background: #cfe2f3; padding: 2px 5px; border-radius: 3px; }
+        .tag-r { color: #660000; background: #f4cccc; padding: 2px 5px; border-radius: 3px; }
+        .history-item { border-left: 4px solid #007bff; padding: 10px; margin-bottom: 10px; background: #fff; text-align: left; cursor: pointer; }
+        #freqDisplay { font-size: 2.5em; color: #007bff; font-weight: bold; margin: 20px 0; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h1>Focus Precision v19.1</h1>
-        <p>Tarkkuustesti stereo-panoroinnilla ja puhtaalla äänellä.</p>
-        <div id="statusArea">
-            <button id="startBtn" onclick="startTestSequence()" class="btn btn-start">Aloita testi</button>
-        </div>
-        <div class="stats">
-            <div>Mittaustila: <span id="testStatusTag" class="tag-l">Valmis</span></div>
-            <div>Pisteitä: <span id="statCount">0</span></div>
-        </div>
+    <div class="card" id="startScreen">
+        <h1>Focus Precision v19.2</h1>
+        <p>Tarkkuustesti aikaleimalla ja vertailulla.</p>
+        <button onclick="startTestSequence()" class="btn btn-start">Aloita uusi testi</button>
+        <div id="historyList"></div>
     </div>
 
     <div class="card" id="testArea" style="display:none;">
-        <h3>Käynnissä: <span id="currentEar" class="ear-tag tag-l">Vasen korva</span></h3>
+        <h3 id="currentEarHeader">Vasen korva (L)</h3>
         <div id="freqDisplay"><span id="currentFreq">--</span> Hz</div>
-        
         <button id="playBtn" onclick="playCurrentTone()" class="btn btn-start">Soita ääni</button>
-        
-        <div class="btn-group" id="inputBtns">
+        <div id="inputBtns" style="visibility:hidden;">
             <button onclick="handleResponse('yes')" class="btn btn-yes">Kuulen selvästi</button>
             <button onclick="handleResponse('little')" class="btn btn-little">Kuulen vain vähän</button>
             <button onclick="handleResponse('no')" class="btn btn-no">En kuule mitään</button>
@@ -56,36 +42,38 @@
     </div>
 
     <div class="card" id="resultArea" style="display:none;">
-        <h3>Testi suoritettu!</h3>
-        <p>Kuulokäyrä on tallennettu laitteellesi.</p>
-        <button onclick="clearHistory()" style="background:none; border:none; color:red; cursor:pointer; font-size:0.8em; margin-top:10px;">Tyhjennä historia</button>
+        <h3>Testi valmis!</h3>
+        <p id="testTimestamp"></p>
+        <div class="stats-grid">
+            <div>
+                <h4>Vasen (L)</h4>
+                <div id="resultsL"></div>
+            </div>
+            <div>
+                <h4>Oikea (R)</h4>
+                <div id="resultsR"></div>
+            </div>
+        </div>
+        <button onclick="location.reload()" class="btn btn-start" style="margin-top:20px;">Palaa alkuun</button>
+        <button onclick="clearAllData()" style="color:red; background:none; border:none; cursor:pointer;">Tyhjennä koko historia</button>
     </div>
 
     <script>
         let audioCtx, oscillator, gainNode, pannerNode;
         let isPlaying = false;
         
-        // Askelletut taajuudet (50Hz / 100Hz / 200Hz)
         const lowFreqs = Array.from({length: 8}, (_, i) => 100 + i * 50); 
         const midFreqs = Array.from({length: 16}, (_, i) => 500 + i * 100);
         const highFreqs = Array.from({length: 16}, (_, i) => 2200 + i * 200); 
         const allFreqs = [...lowFreqs, ...midFreqs, ...highFreqs];
 
-        let testState = {
-            ear: 'L', // L = Vasen, R = Oikea
-            freqIndex: 0,
-            db: -40, // Aloitusvoimakkuus per taajuus
-            stage: 'seeking', // 'seeking' (haetaan kynnystä) tai 'confirming'
-            lastHeardDb: null
-        };
+        let state = { ear: 'L', freqIdx: 0, db: -40, currentSession: [] };
 
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 gainNode = audioCtx.createGain();
                 pannerNode = audioCtx.createStereoPanner();
-                
-                // Ketju: Source -> Filter (puhtaus) -> Gain -> Panner -> Destination
                 gainNode.connect(pannerNode).connect(audioCtx.destination);
             }
         }
@@ -93,144 +81,99 @@
         function startTestSequence() {
             initAudio();
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            document.getElementById('statusArea').style.display = 'none';
+            document.getElementById('startScreen').style.display = 'none';
             document.getElementById('testArea').style.display = 'block';
-            document.getElementById('testStatusTag').innerText = "Testaus käynnissä";
-            updateDisplay();
+            updateUI();
         }
 
-        function updateDisplay() {
-            const earSpan = document.getElementById('currentEar');
-            earSpan.innerText = testState.ear === 'L' ? "Vasen korva (L)" : "Oikea korva (R)";
-            earSpan.className = `ear-tag tag-${testState.ear.toLowerCase()}`;
-            document.getElementById('currentFreq').innerText = allFreqs[testState.freqIndex];
+        function updateUI() {
+            const header = document.getElementById('currentEarHeader');
+            header.innerText = state.ear === 'L' ? "Vasen korva (L)" : "Oikea korva (R)";
+            header.style.color = state.ear === 'L' ? "#073763" : "#660000";
+            document.getElementById('currentFreq').innerText = allFreqs[state.freqIdx];
             document.getElementById('inputBtns').style.visibility = 'hidden';
-            document.getElementById('playBtn').disabled = false;
         }
 
         function playCurrentTone() {
             if (isPlaying) return;
-            initAudio();
-            
             oscillator = audioCtx.createOscillator();
-            oscillator.type = 'sine'; // Puhdas siniaalto
-            oscillator.frequency.value = allFreqs[testState.freqIndex];
+            oscillator.type = 'sine';
+            oscillator.frequency.value = allFreqs[state.freqIdx];
+            pannerNode.pan.setValueAtTime(state.ear === 'L' ? -1 : 1, audioCtx.currentTime);
             
-            // Korjaus 1: Stereo-panorointi
-            pannerNode.pan.setValueAtTime(testState.ear === 'L' ? -1 : 1, audioCtx.currentTime);
-
-            // Korjaus 3: Puhdas ääni (Fade-in / Fade-out naksahduksen estämiseksi)
-            const gain = Math.pow(10, testState.db / 20);
-            gainNode.gain.setValueAtTime(0, audioCtx.currentTime); 
-            gainNode.gain.linearRampToValueAtTime(gain, audioCtx.currentTime + 0.05); // 50ms fade-in
-
+            const gain = Math.pow(10, state.db / 20);
+            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+            gainNode.gain.linearRampToValueAtTime(gain, audioCtx.currentTime + 0.05);
+            
             oscillator.connect(gainNode);
             oscillator.start();
             isPlaying = true;
-            document.getElementById('playBtn').innerText = "Ääni soi...";
             document.getElementById('inputBtns').style.visibility = 'visible';
+            setTimeout(() => {
+                gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.05);
+                setTimeout(() => { if(oscillator){oscillator.stop(); oscillator.disconnect(); isPlaying = false;} }, 100);
+            }, 1500);
+        }
+
+        function handleResponse(res) {
+            if (res === 'yes') { state.db -= 10; playCurrentTone(); }
+            else if (res === 'no') { state.db += 5; playCurrentTone(); }
+            else if (res === 'little') {
+                state.currentSession.push({ e: state.ear, f: allFreqs[state.freqIdx], d: state.db });
+                state.freqIdx++;
+                state.db = -40;
+                if (state.freqIdx >= allFreqs.length) {
+                    if (state.ear === 'L') {
+                        alert("Vasen valmis. Vaihda oikeaan.");
+                        state.ear = 'R'; state.freqIdx = 0; updateUI();
+                    } else { finalize(); }
+                } else { updateUI(); }
+            }
+        }
+
+        function finalize() {
+            const timestamp = new Date().toLocaleString('fi-FI');
+            const history = JSON.parse(localStorage.getItem('focus_history') || "[]");
+            history.push({ time: timestamp, data: state.currentSession });
+            localStorage.setItem('focus_history', JSON.stringify(history));
             
-            // Analytics
-            gtag('event', 'test_play', { 'ear': testState.ear, 'frequency': allFreqs[testState.freqIndex], 'decibels': testState.db });
-
-            // Sammutetaan 1.5 sekunnin kuluttua
-            setTimeout(stopTone, 1500);
+            showResults(state.currentSession, timestamp);
         }
 
-        function stopTone() {
-            if (oscillator) {
-                // Korjaus 3: Fade-out särön estämiseksi
-                gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.05); // 50ms fade-out
-                setTimeout(() => {
-                    oscillator.stop();
-                    oscillator.disconnect();
-                }, 100);
-            }
-            isPlaying = false;
-            document.getElementById('playBtn').innerText = "Soita ääni";
-        }
-
-        function handleResponse(response) {
-            stopTone(); // Pysäytetään ääni jos se soi vielä
-
-            // Analytics
-            gtag('event', 'test_response', { 'response_type': response, 'ear': testState.ear, 'frequency': allFreqs[testState.freqIndex], 'decibels': testState.db });
-
-            // Korjaus 2: Uusi logiikka kuulokynnyksen hakuun
-            if (response === 'yes') {
-                // Kuuli selvästi: Lasketaan voimakkuutta 10dB ja yritetään uudelleen
-                testState.db -= 10;
-                if (testState.db < -90) testState.db = -90;
-                updateDisplay();
-                // Odotetaan hetki ja soitetaan automaattisesti uudelleen matalampi ääni
-                setTimeout(playCurrentTone, 500); 
-
-            } else if (response === 'little') {
-                // Kuuli vähän: Tämä on kynnysarvo. Tallennetaan ja siirrytään eteenpäin.
-                saveDataPoint();
-                moveToNextFrequency();
-
-            } else if (response === 'no') {
-                // Ei kuullut: Nostetaan voimakkuutta 5dB
-                testState.db += 5;
-                if (testState.db > 0) testState.db = 0;
-                updateDisplay();
-                setTimeout(playCurrentTone, 500);
-            }
-        }
-
-        function saveDataPoint() {
-            let saved = JSON.parse(localStorage.getItem('precision_curve_v19') || "[]");
-            saved.push({
-                ear: testState.ear,
-                freq: allFreqs[testState.freqIndex],
-                db: testState.db,
-                date: new Date().toLocaleDateString('fi-FI')
-            });
-            localStorage.setItem('precision_curve_v19', JSON.stringify(saved));
-            updateStats();
-        }
-
-        function moveToNextFrequency() {
-            testState.freqIndex++;
-            testState.db = -40; // Nollataan aloitusvoimakkuus seuraavalle taajuudelle
-
-            if (testState.freqIndex >= allFreqs.length) {
-                if (testState.ear === 'L') {
-                    // Siirrytään oikeaan korvaan
-                    alert("Vasemman korvan testi valmis. Vaihda kuuloke oikeaan korvaan ja paina OK aloittaaksesi.");
-                    testState.ear = 'R';
-                    testState.freqIndex = 0;
-                    updateDisplay();
-                } else {
-                    // Testi kokonaan valmis
-                    finishTest();
-                }
-            } else {
-                updateDisplay();
-            }
-        }
-
-        function updateStats() {
-            const saved = JSON.parse(localStorage.getItem('precision_curve_v19') || "[]");
-            document.getElementById('statCount').innerText = saved.length;
-        }
-
-        function finishTest() {
+        function showResults(data, time) {
             document.getElementById('testArea').style.display = 'none';
             document.getElementById('resultArea').style.display = 'block';
-            document.getElementById('testStatusTag').innerText = "Testi valmis";
-            gtag('event', 'test_complete', { 'total_points': testState.saved.length });
+            document.getElementById('testTimestamp').innerText = "Testattu: " + time;
+            
+            const render = (ear) => data.filter(d => d.e === ear)
+                .map(d => `<div style="font-size:0.8em; border-bottom:1px solid #eee;">${d.f}Hz: <strong>${d.d}dB</strong></div>`).join('');
+            
+            document.getElementById('resultsL').innerHTML = render('L');
+            document.getElementById('resultsR').innerHTML = render('R');
         }
 
-        function clearHistory() {
-            if(confirm("Haluatko poistaa tallennetun käyrän?")) {
-                localStorage.removeItem('precision_curve_v19');
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem('focus_history') || "[]");
+            const list = document.getElementById('historyList');
+            if (history.length > 0) list.innerHTML = "<h3>Historia</h3>";
+            history.reverse().forEach((session, idx) => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.innerHTML = `<strong>${session.time}</strong> - ${session.data.length} pistettä`;
+                div.onclick = () => showResults(session.data, session.time);
+                list.appendChild(div);
+            });
+        }
+
+        function clearAllData() {
+            if(confirm("Poistetaanko koko historia?")) {
+                localStorage.clear();
                 location.reload();
             }
         }
 
-        updateStats();
+        loadHistory();
     </script>
 </body>
 </html>
+ 
