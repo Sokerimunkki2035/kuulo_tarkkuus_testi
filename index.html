@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Focus v22.2 - Energy Saver</title>
+    <title>Focus v23.0 - Itsmyid Oy</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: sans-serif; max-width: 650px; margin: 20px auto; padding: 20px; background: #0a0a0a; color: #eee; text-align: center; }
@@ -14,17 +14,17 @@
         .btn-green { background: #28a745; }
         .btn-orange { background: #fd7e14; }
         .btn-red { background: #dc3545; }
-        .btn-gray { background: #444; font-size: 0.9em; }
+        .btn-gray { background: #444; font-size: 0.8em; }
         #display { font-size: 3em; font-weight: bold; color: #007bff; margin: 15px 0; }
-        .db-info { font-size: 1.2em; color: #888; margin-bottom: 15px; }
+        .history-list { text-align: left; background: #222; padding: 15px; border-radius: 12px; margin-top: 10px; font-family: monospace; }
         input { width: 80%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #222; color: white; text-align: center; font-size: 1.5em; margin: 10px 0; }
     </style>
 </head>
 <body>
 
     <div id="mainMenu" class="card">
-        <h1>Focus v22.2</h1>
-        <p>Valitse jaksamisesi mukaan:</p>
+        <h1>Focus v23.0</h1>
+        <p>Valitse testi tai katso historia:</p>
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <button onclick="startMode('tone', 5)" class="btn btn-blue">PIKA-PIIP (5)</button>
@@ -32,13 +32,15 @@
             <button onclick="startMode('game', 5)" class="btn btn-purple">PIKA-PELI (5)</button>
             <button onclick="startMode('game', 15)" class="btn btn-purple">SYVÄ-PELI</button>
         </div>
-        <div id="historyMsg" style="margin-top:20px; font-size:0.8em; color:#666;"></div>
+        
+        <button onclick="showHistory()" class="btn btn-gray">KATSO VANHAT TULOKSET</button>
+        <div id="historyView" style="display:none;" class="history-list"></div>
     </div>
 
     <div id="testArea" class="card" style="display:none;">
         <div id="earTag" style="font-weight:bold;">VASEN KORVA</div>
         <div id="display">---</div>
-        <div id="dbDisplay" class="db-info">Voimakkuus: -20 dB</div>
+        <div id="dbDisplay" style="font-size:1.2em; color:#888; margin-bottom:15px;">Voimakkuus: 0 dB</div>
 
         <div id="toneUI">
             <button onmousedown="playTone()" onmouseup="stopTone()" ontouchstart="playTone()" ontouchend="stopTone()" class="btn btn-blue">
@@ -57,21 +59,21 @@
     </div>
 
     <div id="resultArea" class="card" style="display:none;">
-        <h2 id="resultTitle">Tulokset</h2>
+        <h2>Tulokset</h2>
         <canvas id="resultChart"></canvas>
-        <div id="profileStats" style="text-align:left; margin-top:20px; font-size:0.9em;"></div>
+        <div id="profileStats" style="text-align:left; margin-top:20px;"></div>
         <button onclick="location.reload()" class="btn btn-blue" style="margin-top:20px;">VALIKKOON</button>
     </div>
 
     <script>
         let audioCtx, gainNode, pannerNode, osc;
         const synth = window.speechSynthesis;
-        const allFreqs = [250, 500, 1000, 2000, 3000, 4000, 6000, 8000];
+        const allFreqs = [250, 500, 1000, 2000, 4000, 6000, 8000];
         const wordPool = ["Sataa", "Kello", "Maito", "Kulta", "Talo", "Varaa", "Pallo"];
         
         let s = { 
-            mode: '', maxSteps: 0, idx: 0, db: -20, ear: 'L', 
-            results: [], gameLog: [], currentTarget: '', targetType: '' 
+            mode: '', maxSteps: 0, idx: 0, db: 0, ear: 'L', 
+            results: [], gameLog: [] 
         };
 
         function initAudio() {
@@ -85,7 +87,7 @@
 
         function startMode(m, steps) {
             initAudio();
-            s.mode = m; s.maxSteps = steps; s.idx = 0; s.db = -20; s.ear = 'L';
+            s.mode = m; s.maxSteps = steps; s.idx = 0; s.db = 0; s.ear = 'L';
             s.results = []; s.gameLog = [];
             document.getElementById('mainMenu').style.display = 'none';
             document.getElementById('testArea').style.display = 'block';
@@ -93,21 +95,12 @@
         }
 
         function setupStep() {
-            const et = document.getElementById('earTag');
-            et.innerText = (s.ear === 'L' ? "VASEN" : "OIKEA") + " KORVA";
-            et.style.color = s.ear === 'L' ? '#4da3ff' : '#ff4d4d';
-            
-            if (s.mode === 'tone') {
-                document.getElementById('display').innerText = allFreqs[s.idx % allFreqs.length] + " Hz";
-                document.getElementById('toneUI').style.display = 'block';
-                document.getElementById('gameUI').style.display = 'none';
-            } else {
-                document.getElementById('display').innerText = (s.idx + 1) + " / " + s.maxSteps;
-                document.getElementById('toneUI').style.display = 'none';
-                document.getElementById('gameUI').style.display = 'block';
-                document.getElementById('userInput').value = '';
-            }
+            document.getElementById('earTag').innerText = (s.ear === 'L' ? "VASEN" : "OIKEA") + " KORVA";
+            document.getElementById('earTag').style.color = s.ear === 'L' ? '#4da3ff' : '#ff4d4d';
+            document.getElementById('display').innerText = s.mode === 'tone' ? allFreqs[s.idx % allFreqs.length] + " Hz" : (s.idx + 1) + " / " + s.maxSteps;
             document.getElementById('dbDisplay').innerText = `Voimakkuus: ${s.db} dB`;
+            document.getElementById('toneUI').style.display = s.mode === 'tone' ? 'block' : 'none';
+            document.getElementById('gameUI').style.display = s.mode === 'game' ? 'block' : 'none';
         }
 
         function playTone() {
@@ -120,31 +113,24 @@
             osc.start();
         }
 
-        function stopTone() {
-            if (osc) {
-                gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.01);
-                osc.stop(audioCtx.currentTime + 0.05);
-                osc = null;
-            }
-        }
+        function stopTone() { if (osc) { osc.stop(); osc = null; } }
 
         function recordHeard(type) {
-            if (type === 'clearly') { s.db -= 5; setupStep(); }
-            else if (type === 'barely') { s.db -= 2; setupStep(); }
+            if (type === 'clearly') { s.db -= 10; setupStep(); }
+            else if (type === 'barely') { s.db -= 4; setupStep(); }
             else {
                 s.results.push({f: allFreqs[s.idx % allFreqs.length], e: s.ear, d: s.db});
-                if (s.ear === 'L') { s.ear = 'R'; s.db = -20; }
-                else { s.ear = 'L'; s.db = -20; s.idx++; }
+                if (s.ear === 'L') { s.ear = 'R'; s.db = 0; }
+                else { s.ear = 'L'; s.db = 0; s.idx++; }
                 if (s.idx >= (s.maxSteps === 5 ? 3 : allFreqs.length)) finish();
                 else setupStep();
             }
         }
 
         function playSpeech() {
-            s.targetType = Math.random() > 0.5 ? 'Sana' : 'Numero';
-            s.currentTarget = s.targetType === 'Sana' ? 
-                wordPool[Math.floor(Math.random()*wordPool.length)] : 
-                Math.floor(1000 + Math.random()*8999).toString();
+            const isNum = Math.random() > 0.5;
+            s.currentTarget = isNum ? Math.floor(1000 + Math.random()*8999).toString() : wordPool[Math.floor(Math.random()*wordPool.length)];
+            s.targetType = isNum ? 'Numero' : 'Sana';
             const ut = new SpeechSynthesisUtterance(s.currentTarget);
             ut.lang = 'fi-FI';
             ut.volume = Math.pow(10, s.db/20);
@@ -153,37 +139,35 @@
 
         function checkGameAnswer() {
             const val = document.getElementById('userInput').value;
-            if (!val) return;
             const correct = val.toLowerCase() === s.currentTarget.toLowerCase();
             s.gameLog.push({ type: s.targetType, correct: correct, db: s.db });
-            
-            if (correct) { alert("Oikein!"); s.db -= 4; }
-            else { alert("Väärin! Oikea: " + s.currentTarget); s.db += 4; }
-            
+            if (correct) s.db -= 5; else s.db += 5;
             s.idx++;
-            if (s.idx >= s.maxSteps) finish();
-            else setupStep();
+            if (s.idx >= s.maxSteps) finish(); else setupStep();
         }
 
         function finish() {
+            const history = JSON.parse(localStorage.getItem('focusHistory') || '[]');
+            history.push({ date: new Date().toLocaleString(), results: s.results, game: s.gameLog });
+            localStorage.setItem('focusHistory', JSON.stringify(history));
             document.getElementById('testArea').style.display = 'none';
             document.getElementById('resultArea').style.display = 'block';
-            if (s.mode === 'tone') drawChart();
-            else showProfile();
+            if (s.mode === 'tone') drawChart(); else showProfile();
+        }
+
+        function showHistory() {
+            const hv = document.getElementById('historyView');
+            const history = JSON.parse(localStorage.getItem('focusHistory') || '[]');
+            hv.innerHTML = history.length ? history.map(h => `<div><b>${h.date}</b>: ${h.results.length} piippausta tallennettu</div>`).join('') : "Ei aiempia testejä.";
+            hv.style.display = 'block';
         }
 
         function showProfile() {
             const words = s.gameLog.filter(l => l.type === 'Sana');
             const nums = s.gameLog.filter(l => l.type === 'Numero');
-            const wAcc = words.length ? (words.filter(l=>l.correct).length / words.length * 100).toFixed(0) : 0;
-            const nAcc = nums.length ? (nums.filter(l=>l.correct).length / nums.length * 100).toFixed(0) : 0;
-            
-            document.getElementById('profileStats').innerHTML = `
-                <h3>Ymmärrysprofiili</h3>
-                <p><b>Sanat:</b> ${wAcc}% oikein (${words.length} kpl)</p>
-                <p><b>Numerot:</b> ${nAcc}% oikein (${nums.length} kpl)</p>
-                <p style="color:#888; font-size:0.8em;">Matala accuracy numeroissa viittaa usein korkeiden taajuuksien häiriöön (kuten tinnitukseen).</p>
-            `;
+            document.getElementById('profileStats').innerHTML = `<h3>Ymmärrysprofiili</h3>
+                Sanat: ${words.filter(l=>l.correct).length}/${words.length} oikein<br>
+                Numerot: ${nums.filter(l=>l.correct).length}/${nums.length} oikein`;
         }
 
         function drawChart() {
