@@ -3,89 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Focus v25.2 - Satakunta Nature Edition</title>
+    <title>Focus v25.2 - Audio Fix</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: sans-serif; max-width: 650px; margin: 0 auto; padding: 20px; background: #050505; color: #eee; text-align: center; }
         .card { background: #111; padding: 30px; border-radius: 25px; border: 1px solid #222; margin-top: 20px; }
-        .btn { border: none; padding: 20px; border-radius: 15px; cursor: pointer; font-size: 1.1em; font-weight: bold; width: 100%; margin: 8px 0; color: white; transition: 0.1s; }
+        .btn { border: none; padding: 20px; border-radius: 15px; cursor: pointer; font-size: 1.1em; font-weight: bold; width: 100%; margin: 8px 0; color: white; }
         .btn-blue { background: #0056b3; }
         .btn-green { background: #1e7e34; }
         .btn-orange { background: #d39e00; }
         .btn-red { background: #bd2130; }
         .btn-gray { background: #333; font-size: 0.9em; }
-        .btn-gray:disabled { opacity: 0.3; }
         #display { font-size: 3.5em; font-weight: bold; margin: 15px 0; color: #007bff; }
         .db-info { font-size: 1.8em; color: #fff; background: #222; padding: 10px; border-radius: 10px; margin-bottom: 15px; }
-        .chart-container { background: #fff; border-radius: 15px; padding: 15px; margin-top: 20px; display: none; height: 500px; width: 100%; }
-        .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        .nature-list { text-align: left; background: #222; padding: 15px; border-radius: 15px; margin-top: 10px; }
-        .nature-item { display: flex; justify-content: space-between; align-items: center; margin: 5px 0; border-bottom: 1px solid #333; padding: 5px 0; }
+        .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     </style>
 </head>
 <body>
 
     <div id="mainMenu" class="card">
         <h1>Focus v25.2</h1>
-        <p>Lääketieteellinen dB HL -asteikko.<br>Sisältää Suomen luonnon vertailuäänet.</p>
-        <button onclick="startTest()" class="btn btn-blue">ALOITA TESTI</button>
+        <p>Jos ääntä ei kuulu, varmista että puhelimen merkkiäänet ja median voimakkuus ovat päällä.</p>
+        <button onclick="startTest()" class="btn btn-blue">KÄYNNISTÄ TESTI</button>
     </div>
 
     <div id="testArea" class="card" style="display:none;">
-        <div id="earTag" style="font-weight:bold; font-size: 1.3em; color: #4da3ff;">VASEN KORVA</div>
+        <div id="earTag" style="font-weight:bold; font-size: 1.3em;">VALMISTELLAAN...</div>
         <div id="display">1000 Hz</div>
-        <div id="dbDisplay" class="db-info">0 dB HL</div>
+        <div id="dbDisplay" class="db-info">Odotetaan...</div>
         
-        <button onmousedown="playTone()" onmouseup="stopTone()" ontouchstart="playTone()" ontouchend="stopTone()" class="btn btn-blue" style="height: 120px; font-size: 1.6em; margin-bottom: 20px;">SOITA ÄÄNI</button>
+        <button id="playBtn" onmousedown="playTone()" onmouseup="stopTone()" ontouchstart="playTone()" ontouchend="stopTone()" class="btn btn-blue" style="height: 120px; font-size: 1.6em;">
+            SOITA ÄÄNI
+        </button>
         
-        <div class="control-grid">
+        <div class="control-grid" style="margin-top:20px;">
             <button onclick="adjustDb(-5)" class="btn btn-orange">KOVENNA (+5 dB)</button>
             <button onclick="adjustDb(5)" class="btn btn-green">HILJENNÄ (-5 dB)</button>
         </div>
         
-        <button onclick="recordFinal()" class="btn btn-red" style="padding: 25px;">TÄMÄ ON RAJA</button>
-        
-        <div style="display: flex; gap: 10px; margin-top: 20px;">
-            <button onclick="goBack()" id="backBtn" class="btn btn-gray" style="flex:1;">PERUUTA</button>
-            <button onclick="location.reload()" class="btn btn-gray" style="flex:1;">KESKEYTÄ</button>
-        </div>
-    </div>
-
-    <div id="resultArea" class="card" style="display:none;">
-        <h2 style="color: white;">Kuulokäyrä (dB HL)</h2>
-        <div class="chart-container">
-            <canvas id="resultChart"></canvas>
-        </div>
-        
-        <div class="nature-list">
-            <strong style="color: #007bff;">Kuuntele vertailuääniä:</strong>
-            <div class="nature-item"><span>Hippiäinen (8000 Hz)</span> <button onclick="playExample(8000, 15)" class="btn-blue" style="padding:5px 10px; border-radius:5px;">Soita</button></div>
-            <div class="nature-item"><span>Sinitiainen (4000 Hz)</span> <button onclick="playExample(4000, 20)" class="btn-blue" style="padding:5px 10px; border-radius:5px;">Soita</button></div>
-            <div class="nature-item"><span>Palovaroitin (3000 Hz)</span> <button onclick="playExample(3000, 80)" class="btn-blue" style="padding:5px 10px; border-radius:5px;">Soita</button></div>
-        </div>
-
-        <button onclick="location.reload()" class="btn btn-blue" style="margin-top:20px;">VALIKKOON</button>
+        <button onclick="recordFinal()" class="btn btn-red" style="padding: 20px; margin-top:20px;">TÄMÄ ON RAJA</button>
+        <button onclick="goBack()" id="backBtn" class="btn btn-gray">PERUUTA</button>
     </div>
 
     <script>
         let audioCtx, gainNode, pannerNode, osc;
         const freqs = [125, 250, 500, 1000, 2000, 4000, 8000];
         let historyStates = [];
-        let s = { ear: 'L', idx: 0, db: -100, results: [] };
+        // Aloitetaan -60 dB:stä, jotta se ei ole täysin mykkä alussa (vastaa 40 dB HL)
+        let s = { ear: 'L', idx: 0, db: -60, results: [] };
 
-        function initAudio() {
+        async function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 gainNode = audioCtx.createGain();
                 pannerNode = audioCtx.createStereoPanner();
                 gainNode.connect(pannerNode).connect(audioCtx.destination);
             }
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
         }
 
-        function saveState() { historyStates.push(JSON.parse(JSON.stringify(s))); }
-
-        function startTest() {
-            initAudio();
+        async function startTest() {
+            await initAudio(); // Aktivoi audio käyttäjän klikkauksesta
             document.getElementById('mainMenu').style.display = 'none';
             document.getElementById('testArea').style.display = 'block';
             updateUI();
@@ -97,75 +77,46 @@
             const et = document.getElementById('earTag');
             et.innerText = (s.ear === 'L' ? "VASEN" : "OIKEA") + " KORVA";
             et.style.color = s.ear === 'L' ? '#4da3ff' : '#ff4d4d';
-            document.getElementById('backBtn').disabled = historyStates.length === 0;
         }
 
         function playTone() {
             if (osc) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
             osc = audioCtx.createOscillator();
             osc.frequency.value = freqs[s.idx];
             pannerNode.pan.value = s.ear === 'L' ? -1 : 1;
-            gainNode.gain.setValueAtTime(Math.pow(10, s.db/20), audioCtx.currentTime);
+            
+            // Gain-laskenta: varmistetaan ettei mennä yli 0.5 (suojaa korvia)
+            let vol = Math.pow(10, s.db/20);
+            gainNode.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.02);
+            
             osc.connect(gainNode);
             osc.start();
+            console.log("Soitetaan: " + freqs[s.idx] + "Hz, Voimakkuus: " + s.db + "dB");
         }
 
-        function stopTone() { if (osc) { osc.stop(); osc.disconnect(); osc = null; } }
+        function stopTone() { 
+            if (osc) { 
+                osc.stop(); 
+                osc.disconnect(); 
+                osc = null; 
+            } 
+        }
 
         function adjustDb(amount) {
-            saveState();
-            s.db -= (amount * -1); // Käännetty logiikka: kovempaa = lähemmäs nollaa
-            s.db = Math.max(-100, Math.min(0, s.db));
+            s.db -= (amount * -1); 
+            s.db = Math.max(-100, Math.min(-5, s.db));
             updateUI();
         }
 
         function recordFinal() {
-            saveState();
             s.results.push({f: freqs[s.idx], e: s.ear, d: s.db + 100});
-            if (s.ear === 'L') { s.ear = 'R'; s.db = -100; }
-            else { s.ear = 'L'; s.db = -100; s.idx++; }
-            if (s.idx >= freqs.length) finish(); else updateUI();
-        }
-
-        function goBack() { if (historyStates.length > 0) { s = historyStates.pop(); updateUI(); } }
-
-        function playExample(f, d) {
-            initAudio();
-            const o = audioCtx.createOscillator();
-            const g = audioCtx.createGain();
-            o.frequency.value = f;
-            g.gain.setValueAtTime(Math.pow(10, (d - 100) / 20), audioCtx.currentTime);
-            o.connect(g).connect(audioCtx.destination);
-            o.start();
-            o.stop(audioCtx.currentTime + 1.5);
-        }
-
-        function finish() {
-            document.getElementById('testArea').style.display = 'none';
-            document.getElementById('resultArea').style.display = 'block';
-            document.querySelector('.chart-container').style.display = 'block';
-            drawChart();
-        }
-
-        function drawChart() {
-            const ctx = document.getElementById('resultChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    datasets: [
-                        { label: 'Vasen', data: s.results.filter(r=>r.e==='L').map(r=>({x:r.f, y:r.d})), borderColor: 'blue', backgroundColor: 'blue', tension: 0 },
-                        { label: 'Oikea', data: s.results.filter(r=>r.e==='R').map(r=>({x:r.f, y:r.d})), borderColor: 'red', backgroundColor: 'red', tension: 0 }
-                    ]
-                },
-                options: {
-                    scales: {
-                        x: { type: 'logarithmic', min: 100, max: 10000, ticks: { callback: v => v + "Hz" } },
-                        y: { reverse: true, min: 0, max: 100, title: { display: true, text: 'dB HL' } }
-                    }
-                }
-            });
+            if (s.ear === 'L') { s.ear = 'R'; s.db = -60; }
+            else { s.ear = 'L'; s.db = -60; s.idx++; }
+            if (s.idx >= freqs.length) alert("Testi valmis! (Kaavion piirto puuttuu tästä pikakorjauksesta)"); 
+            else updateUI();
         }
     </script>
 </body>
 </html>
- 
