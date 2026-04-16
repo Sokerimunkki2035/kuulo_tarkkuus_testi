@@ -3,78 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Focus v23.0 - Itsmyid Oy</title>
+    <title>Focus v24.1 - Itsmyid Oy</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: sans-serif; max-width: 650px; margin: 20px auto; padding: 20px; background: #0a0a0a; color: #eee; text-align: center; }
-        .card { background: #181818; padding: 25px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); margin-bottom: 20px; border: 1px solid #333; }
-        .btn { border: none; padding: 18px; border-radius: 12px; cursor: pointer; font-size: 1.1em; font-weight: bold; width: 100%; margin: 8px 0; color: white; transition: 0.2s; }
-        .btn-blue { background: #007bff; }
-        .btn-purple { background: #6f42c1; }
-        .btn-green { background: #28a745; }
-        .btn-orange { background: #fd7e14; }
-        .btn-red { background: #dc3545; }
-        .btn-gray { background: #444; font-size: 0.8em; }
-        #display { font-size: 3em; font-weight: bold; color: #007bff; margin: 15px 0; }
-        .history-list { text-align: left; background: #222; padding: 15px; border-radius: 12px; margin-top: 10px; font-family: monospace; }
-        input { width: 80%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #222; color: white; text-align: center; font-size: 1.5em; margin: 10px 0; }
+        body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #050505; color: #eee; text-align: center; }
+        .card { background: #111; padding: 30px; border-radius: 25px; border: 1px solid #222; margin-top: 20px; }
+        .btn { border: none; padding: 25px; border-radius: 15px; cursor: pointer; font-size: 1.2em; font-weight: bold; width: 100%; margin: 10px 0; color: white; }
+        .btn-blue { background: #0056b3; }
+        .btn-green { background: #1e7e34; }
+        .btn-orange { background: #d39e00; }
+        .btn-red { background: #bd2130; }
+        #display { font-size: 3.5em; font-weight: bold; margin: 20px 0; color: #007bff; }
+        .db-info { font-size: 1.5em; color: #666; }
+        .chart-container { background: #fff; border-radius: 15px; padding: 15px; margin-top: 20px; display: none; }
     </style>
 </head>
 <body>
 
     <div id="mainMenu" class="card">
-        <h1>Focus v23.0</h1>
-        <p>Valitse testi tai katso historia:</p>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <button onclick="startMode('tone', 5)" class="btn btn-blue">PIKA-PIIP (5)</button>
-            <button onclick="startMode('tone', 10)" class="btn btn-blue">TARKKA-PIIP</button>
-            <button onclick="startMode('game', 5)" class="btn btn-purple">PIKA-PELI (5)</button>
-            <button onclick="startMode('game', 15)" class="btn btn-purple">SYVÄ-PELI</button>
-        </div>
-        
-        <button onclick="showHistory()" class="btn btn-gray">KATSO VANHAT TULOKSET</button>
-        <div id="historyView" style="display:none;" class="history-list"></div>
+        <h1>Focus v24.1</h1>
+        <p>Stressitön testi. Käyrä piilotettu testin ajaksi.</p>
+        <button onclick="startTest()" class="btn btn-blue">ALOITA TESTI</button>
     </div>
 
     <div id="testArea" class="card" style="display:none;">
-        <div id="earTag" style="font-weight:bold;">VASEN KORVA</div>
-        <div id="display">---</div>
-        <div id="dbDisplay" style="font-size:1.2em; color:#888; margin-bottom:15px;">Voimakkuus: 0 dB</div>
+        <div id="earTag" style="font-weight:bold; font-size: 1.5em; letter-spacing: 2px;">VASEN KORVA</div>
+        <div id="display">1000 Hz</div>
+        <div id="dbDisplay" class="db-info">Voimakkuus: 0 dB</div>
 
-        <div id="toneUI">
-            <button onmousedown="playTone()" onmouseup="stopTone()" ontouchstart="playTone()" ontouchend="stopTone()" class="btn btn-blue">
-                PIDÄ POHJASSA: SOITA
-            </button>
-            <button onclick="recordHeard('clearly')" class="btn btn-green">KUULIN SELVÄSTI</button>
-            <button onclick="recordHeard('barely')" class="btn btn-orange">KUULIN VÄHÄN</button>
-            <button onclick="recordHeard('none')" class="btn btn-red">EN KUULLUT</button>
-        </div>
-
-        <div id="gameUI" style="display:none;">
-            <button onclick="playSpeech()" class="btn btn-purple">KUUNTELE</button>
-            <input type="text" id="userInput" placeholder="?">
-            <button onclick="checkGameAnswer()" class="btn btn-green">VASTAA</button>
+        <button onmousedown="playTone()" onmouseup="stopTone()" ontouchstart="playTone()" ontouchend="stopTone()" class="btn btn-blue" style="height: 120px; font-size: 1.5em;">
+            SOITA ÄÄNI
+        </button>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 20px;">
+            <button onclick="recordHeard('clearly')" class="btn btn-green">KUULIN</button>
+            <button onclick="recordHeard('barely')" class="btn btn-orange">VÄHÄN</button>
+            <button onclick="recordHeard('none')" class="btn btn-red">EN</button>
         </div>
     </div>
 
     <div id="resultArea" class="card" style="display:none;">
         <h2>Tulokset</h2>
-        <canvas id="resultChart"></canvas>
-        <div id="profileStats" style="text-align:left; margin-top:20px;"></div>
-        <button onclick="location.reload()" class="btn btn-blue" style="margin-top:20px;">VALIKKOON</button>
+        <div class="chart-container" id="chartBox">
+            <canvas id="resultChart"></canvas>
+        </div>
+        <button onclick="location.reload()" class="btn btn-blue" style="margin-top:20px;">PALAA ALKUUN</button>
     </div>
 
     <script>
         let audioCtx, gainNode, pannerNode, osc;
-        const synth = window.speechSynthesis;
-        const allFreqs = [250, 500, 1000, 2000, 4000, 6000, 8000];
-        const wordPool = ["Sataa", "Kello", "Maito", "Kulta", "Talo", "Varaa", "Pallo"];
-        
-        let s = { 
-            mode: '', maxSteps: 0, idx: 0, db: 0, ear: 'L', 
-            results: [], gameLog: [] 
-        };
+        const freqs = [250, 500, 1000, 2000, 4000, 8000];
+        let s = { ear: 'L', idx: 0, db: 0, results: [] };
 
         function initAudio() {
             if (!audioCtx) {
@@ -85,89 +64,62 @@
             }
         }
 
-        function startMode(m, steps) {
+        function startTest() {
             initAudio();
-            s.mode = m; s.maxSteps = steps; s.idx = 0; s.db = 0; s.ear = 'L';
-            s.results = []; s.gameLog = [];
             document.getElementById('mainMenu').style.display = 'none';
             document.getElementById('testArea').style.display = 'block';
-            setupStep();
+            updateUI();
         }
 
-        function setupStep() {
-            document.getElementById('earTag').innerText = (s.ear === 'L' ? "VASEN" : "OIKEA") + " KORVA";
-            document.getElementById('earTag').style.color = s.ear === 'L' ? '#4da3ff' : '#ff4d4d';
-            document.getElementById('display').innerText = s.mode === 'tone' ? allFreqs[s.idx % allFreqs.length] + " Hz" : (s.idx + 1) + " / " + s.maxSteps;
-            document.getElementById('dbDisplay').innerText = `Voimakkuus: ${s.db} dB`;
-            document.getElementById('toneUI').style.display = s.mode === 'tone' ? 'block' : 'none';
-            document.getElementById('gameUI').style.display = s.mode === 'game' ? 'block' : 'none';
+        function updateUI() {
+            document.getElementById('display').innerText = freqs[s.idx] + " Hz";
+            document.getElementById('dbDisplay').innerText = s.db + " dB";
+            const et = document.getElementById('earTag');
+            et.innerText = (s.ear === 'L' ? "VASEN" : "OIKEA") + " KORVA";
+            et.style.color = s.ear === 'L' ? '#007bff' : '#dc3545';
         }
 
         function playTone() {
             if (osc) return;
             osc = audioCtx.createOscillator();
-            osc.frequency.value = allFreqs[s.idx % allFreqs.length];
+            osc.frequency.value = freqs[s.idx];
             pannerNode.pan.value = s.ear === 'L' ? -1 : 1;
-            gainNode.gain.setTargetAtTime(Math.pow(10, s.db/20), audioCtx.currentTime, 0.02);
+            // Puhdas gain ilman ylimääräisiä filttereitä tai suhinaa
+            gainNode.gain.setValueAtTime(Math.pow(10, s.db/20), audioCtx.currentTime);
             osc.connect(gainNode);
             osc.start();
         }
 
-        function stopTone() { if (osc) { osc.stop(); osc = null; } }
+        function stopTone() { if (osc) { osc.stop(); osc.disconnect(); osc = null; } }
 
         function recordHeard(type) {
-            if (type === 'clearly') { s.db -= 10; setupStep(); }
-            else if (type === 'barely') { s.db -= 4; setupStep(); }
+            if (type === 'clearly') { s.db -= 10; }
+            else if (type === 'barely') { s.db -= 4; }
             else {
-                s.results.push({f: allFreqs[s.idx % allFreqs.length], e: s.ear, d: s.db});
-                if (s.ear === 'L') { s.ear = 'R'; s.db = 0; }
-                else { s.ear = 'L'; s.db = 0; s.idx++; }
-                if (s.idx >= (s.maxSteps === 5 ? 3 : allFreqs.length)) finish();
-                else setupStep();
+                s.results.push({f: freqs[s.idx], e: s.ear, d: s.db});
+                s.idx++;
+                s.db = 0; // Nollataan voimakkuus uudelle taajuudelle
             }
-        }
 
-        function playSpeech() {
-            const isNum = Math.random() > 0.5;
-            s.currentTarget = isNum ? Math.floor(1000 + Math.random()*8999).toString() : wordPool[Math.floor(Math.random()*wordPool.length)];
-            s.targetType = isNum ? 'Numero' : 'Sana';
-            const ut = new SpeechSynthesisUtterance(s.currentTarget);
-            ut.lang = 'fi-FI';
-            ut.volume = Math.pow(10, s.db/20);
-            synth.speak(ut);
-        }
-
-        function checkGameAnswer() {
-            const val = document.getElementById('userInput').value;
-            const correct = val.toLowerCase() === s.currentTarget.toLowerCase();
-            s.gameLog.push({ type: s.targetType, correct: correct, db: s.db });
-            if (correct) s.db -= 5; else s.db += 5;
-            s.idx++;
-            if (s.idx >= s.maxSteps) finish(); else setupStep();
+            // Jos kaikki taajuudet tehty yhdelle korvalle
+            if (s.idx >= freqs.length) {
+                if (s.ear === 'L') {
+                    s.ear = 'R';
+                    s.idx = 0;
+                    s.db = 0;
+                } else {
+                    finish();
+                    return;
+                }
+            }
+            updateUI();
         }
 
         function finish() {
-            const history = JSON.parse(localStorage.getItem('focusHistory') || '[]');
-            history.push({ date: new Date().toLocaleString(), results: s.results, game: s.gameLog });
-            localStorage.setItem('focusHistory', JSON.stringify(history));
             document.getElementById('testArea').style.display = 'none';
             document.getElementById('resultArea').style.display = 'block';
-            if (s.mode === 'tone') drawChart(); else showProfile();
-        }
-
-        function showHistory() {
-            const hv = document.getElementById('historyView');
-            const history = JSON.parse(localStorage.getItem('focusHistory') || '[]');
-            hv.innerHTML = history.length ? history.map(h => `<div><b>${h.date}</b>: ${h.results.length} piippausta tallennettu</div>`).join('') : "Ei aiempia testejä.";
-            hv.style.display = 'block';
-        }
-
-        function showProfile() {
-            const words = s.gameLog.filter(l => l.type === 'Sana');
-            const nums = s.gameLog.filter(l => l.type === 'Numero');
-            document.getElementById('profileStats').innerHTML = `<h3>Ymmärrysprofiili</h3>
-                Sanat: ${words.filter(l=>l.correct).length}/${words.length} oikein<br>
-                Numerot: ${nums.filter(l=>l.correct).length}/${nums.length} oikein`;
+            document.getElementById('chartBox').style.display = 'block';
+            drawChart();
         }
 
         function drawChart() {
@@ -176,11 +128,16 @@
                 type: 'line',
                 data: {
                     datasets: [
-                        { label: 'Vasen', data: s.results.filter(r=>r.e==='L').map(r=>({x:r.f, y:r.d})), borderColor: '#4da3ff' },
-                        { label: 'Oikea', data: s.results.filter(r=>r.e==='R').map(r=>({x:r.f, y:r.d})), borderColor: '#ff4d4d' }
+                        { label: 'Vasen (L)', data: s.results.filter(r=>r.e==='L').map(r=>({x:r.f, y:r.d})), borderColor: 'blue', backgroundColor: 'blue', tension: 0 },
+                        { label: 'Oikea (R)', data: s.results.filter(r=>r.e==='R').map(r=>({x:r.f, y:r.d})), borderColor: 'red', backgroundColor: 'red', tension: 0 }
                     ]
                 },
-                options: { scales: { x: { type: 'logarithmic' }, y: { reverse: true, min: -100, max: 0 } } }
+                options: {
+                    scales: {
+                        x: { type: 'logarithmic', grid: { color: '#ccc' }, ticks: { callback: v => v + 'Hz' } },
+                        y: { reverse: true, min: -100, max: 0, ticks: { stepSize: 10 }, grid: { color: '#ddd' } }
+                    }
+                }
             });
         }
     </script>
