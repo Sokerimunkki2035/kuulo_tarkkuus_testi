@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Focus v25.2 - Itsmyid Full Control</title>
+    <title>Focus v25.2 - Full Control</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: sans-serif; max-width: 650px; margin: 0 auto; padding: 20px; background: #050505; color: #eee; text-align: center; }
@@ -14,6 +14,7 @@
         .btn-orange { background: #d39e00; }
         .btn-red { background: #bd2130; }
         .btn-gray { background: #333; font-size: 0.9em; }
+        .btn-gray:disabled { opacity: 0.3; cursor: not-allowed; }
         #display { font-size: 3.5em; font-weight: bold; margin: 15px 0; color: #007bff; }
         .db-info { font-size: 1.8em; color: #fff; background: #222; padding: 10px; border-radius: 10px; margin-bottom: 15px; }
         .chart-container { background: #fff; border-radius: 15px; padding: 15px; margin-top: 20px; display: none; }
@@ -24,8 +25,8 @@
 
     <div id="mainMenu" class="card">
         <h1>Focus v25.2</h1>
-        <p>Täysi hallinta: voit nyt myös nostaa ääntä.</p>
-        <button onclick="startTest('basic')" class="btn btn-blue">ALOITA PERUSTESTI (7 ääntä)</button>
+        <p>Peruutus-toiminto ja 10 dB ruudukko aktivoitu.</p>
+        <button onclick="startTest('basic')" class="btn btn-blue">ALOITA PERUSTESTI</button>
     </div>
 
     <div id="testArea" class="card" style="display:none;">
@@ -42,7 +43,7 @@
             <button onclick="adjustDb(5)" class="btn btn-orange">KOVENNA (+5 dB)</button>
         </div>
 
-        <button onclick="recordFinal()" class="btn btn-red" style="padding: 25px;">TÄMÄ ON RAJA (LUKITSE "EN KUULE")</button>
+        <button onclick="recordFinal()" class="btn btn-red" style="padding: 25px;">TÄMÄ ON RAJA</button>
 
         <div style="display: flex; gap: 10px; margin-top: 20px;">
             <button onclick="goBack()" id="backBtn" class="btn btn-gray" style="flex:1;">PERUUTA</button>
@@ -51,7 +52,7 @@
     </div>
 
     <div id="resultArea" class="card" style="display:none;">
-        <h2>Kuulokäyrä (10 dB ruudukko)</h2>
+        <h2 style="color: white;">Kuulokäyrä (10 dB ruudukko)</h2>
         <div class="chart-container" id="chartBox">
             <canvas id="resultChart"></canvas>
         </div>
@@ -63,7 +64,7 @@
         let audioCtx, gainNode, pannerNode, osc;
         const basicFreqs = [125, 250, 500, 1000, 2000, 4000, 8000];
         let currentFreqs = [...basicFreqs];
-        let historyStates = [];
+        let historyStates = []; // TÄMÄ TALLENTAA HISTORIAN
         let s = { mode: 'basic', ear: 'L', idx: 0, db: 0, results: [] };
 
         function initAudio() {
@@ -73,6 +74,10 @@
                 pannerNode = audioCtx.createStereoPanner();
                 gainNode.connect(pannerNode).connect(audioCtx.destination);
             }
+        }
+
+        function saveState() {
+            historyStates.push(JSON.parse(JSON.stringify(s)));
         }
 
         function startTest(mode, deepDiveFreq) {
@@ -99,6 +104,8 @@
             const et = document.getElementById('earTag');
             et.innerText = (s.ear === 'L' ? "VASEN" : "OIKEA") + " KORVA";
             et.style.color = s.ear === 'L' ? '#4da3ff' : '#ff4d4d';
+            
+            // Peruuta-nappi on päällä vain jos historiassa on jotain
             document.getElementById('backBtn').disabled = historyStates.length === 0;
         }
 
@@ -115,7 +122,7 @@
         function stopTone() { if (osc) { osc.stop(); osc.disconnect(); osc = null; } }
 
         function adjustDb(amount) {
-            historyStates.push(JSON.parse(JSON.stringify(s)));
+            saveState(); // Tallennetaan nykytila ennen muutosta
             s.db += amount;
             if (s.db > 0) s.db = 0;
             if (s.db < -100) s.db = -100;
@@ -123,7 +130,7 @@
         }
 
         function recordFinal() {
-            historyStates.push(JSON.parse(JSON.stringify(s)));
+            saveState(); // Tallennetaan nykytila ennen siirtymistä seuraavaan ääneen
             const freq = currentFreqs[s.idx % currentFreqs.length];
             s.results = s.results.filter(r => !(r.f === freq && r.e === s.ear));
             s.results.push({f: freq, e: s.ear, d: s.db});
@@ -140,7 +147,7 @@
 
         function goBack() {
             if (historyStates.length > 0) {
-                s = historyStates.pop();
+                s = historyStates.pop(); // Haetaan edellinen tila
                 updateUI();
             }
         }
@@ -168,14 +175,26 @@
                 type: 'line',
                 data: {
                     datasets: [
-                        { label: 'Vasen', data: s.results.filter(r=>r.e==='L').sort((a,b)=>a.f-b.f).map(r=>({x:r.f, y:r.d})), borderColor: 'blue', tension: 0 },
-                        { label: 'Oikea', data: s.results.filter(r=>r.e==='R').sort((a,b)=>a.f-b.f).map(r=>({x:r.f, y:r.d})), borderColor: 'red', tension: 0 }
+                        { label: 'Vasen', data: s.results.filter(r=>r.e==='L').sort((a,b)=>a.f-b.f).map(r=>({x:r.f, y:r.d})), borderColor: 'blue', backgroundColor: 'blue', tension: 0, pointRadius: 5 },
+                        { label: 'Oikea', data: s.results.filter(r=>r.e==='R').sort((a,b)=>a.f-b.f).map(r=>({x:r.f, y:r.d})), borderColor: 'red', backgroundColor: 'red', tension: 0, pointRadius: 5 }
                     ]
                 },
                 options: {
+                    responsive: true,
                     scales: {
-                        x: { type: 'logarithmic', grid: { color: '#ccc' }, ticks: { callback: v => v + 'Hz' } },
-                        y: { reverse: true, min: -100, max: 0, ticks: { stepSize: 10 }, grid: { color: '#bbb' } }
+                        x: { 
+                            type: 'logarithmic', 
+                            min: 100, max: 10000,
+                            grid: { color: '#ddd' }, 
+                            ticks: { 
+                                callback: v => [125,250,500,1000,2000,4000,8000].includes(v) ? v+'Hz' : ''
+                            } 
+                        },
+                        y: { 
+                            reverse: true, min: -100, max: 0, 
+                            ticks: { stepSize: 10, autoSkip: false }, 
+                            grid: { color: '#ccc' } 
+                        }
                     }
                 }
             });
