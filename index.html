@@ -17,7 +17,31 @@
         .btn-gray:disabled { opacity: 0.3; cursor: not-allowed; }
         #display { font-size: 3.5em; font-weight: bold; margin: 15px 0; color: #007bff; }
         .db-info { font-size: 1.8em; color: #fff; background: #222; padding: 10px; border-radius: 10px; margin-bottom: 15px; }
-        .chart-container { background: #fff; border-radius: 15px; padding: 15px; margin-top: 20px; display: none; }
+        
+        /* KAAVION SÄÄDÖT JA AUTOMAATTINEN SUURENNUS */
+        .chart-container { 
+            background: #fff; 
+            border-radius: 15px; 
+            padding: 15px; 
+            margin-top: 20px; 
+            display: none; 
+            position: relative;
+            height: 350px; /* Korkeus pystytilassa */
+            width: 100%;
+        }
+
+        /* KUN PUHELIN KÄÄNNETÄÄN VAAKAAN (LANDSCAPE) */
+        @media (orientation: landscape) {
+            body { max-width: 100%; padding: 0; }
+            .card { margin: 0; border-radius: 0; border: none; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+            #resultArea h2, #deepDiveButtons, #resultArea .btn-blue:not(#backBtn) { display: none; }
+            .chart-container { 
+                display: block !important; 
+                height: 85vh; /* Venyttää kaavion isoksi */
+                margin: 0;
+            }
+        }
+
         .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
     </style>
 </head>
@@ -25,7 +49,7 @@
 
     <div id="mainMenu" class="card">
         <h1>Focus v25.2</h1>
-        <p>Peruutus-toiminto ja 10 dB ruudukko aktivoitu.</p>
+        <p>Peruutus ja 10 dB ruudukko.<br><b>Käännä vaakaan nähdäksesi tulokset isona.</b></p>
         <button onclick="startTest('basic')" class="btn btn-blue">ALOITA PERUSTESTI</button>
     </div>
 
@@ -33,18 +57,12 @@
         <div id="earTag" style="font-weight:bold; font-size: 1.3em;">VASEN KORVA</div>
         <div id="display">1000 Hz</div>
         <div id="dbDisplay" class="db-info">0 dB</div>
-
-        <button onmousedown="playTone()" onmouseup="stopTone()" ontouchstart="playTone()" ontouchend="stopTone()" class="btn btn-blue" style="height: 100px; font-size: 1.5em; margin-bottom: 20px;">
-            SOITA ÄÄNI
-        </button>
-        
+        <button onmousedown="playTone()" onmouseup="stopTone()" ontouchstart="playTone()" ontouchend="stopTone()" class="btn btn-blue" style="height: 100px; font-size: 1.5em; margin-bottom: 20px;">SOITA ÄÄNI</button>
         <div class="control-grid">
             <button onclick="adjustDb(-5)" class="btn btn-green">HILJENNÄ (-5 dB)</button>
             <button onclick="adjustDb(5)" class="btn btn-orange">KOVENNA (+5 dB)</button>
         </div>
-
         <button onclick="recordFinal()" class="btn btn-red" style="padding: 25px;">TÄMÄ ON RAJA</button>
-
         <div style="display: flex; gap: 10px; margin-top: 20px;">
             <button onclick="goBack()" id="backBtn" class="btn btn-gray" style="flex:1;">PERUUTA</button>
             <button onclick="location.reload()" class="btn btn-gray" style="flex:1;">KESKEYTÄ</button>
@@ -64,7 +82,7 @@
         let audioCtx, gainNode, pannerNode, osc;
         const basicFreqs = [125, 250, 500, 1000, 2000, 4000, 8000];
         let currentFreqs = [...basicFreqs];
-        let historyStates = []; // TÄMÄ TALLENTAA HISTORIAN
+        let historyStates = [];
         let s = { mode: 'basic', ear: 'L', idx: 0, db: 0, results: [] };
 
         function initAudio() {
@@ -76,9 +94,7 @@
             }
         }
 
-        function saveState() {
-            historyStates.push(JSON.parse(JSON.stringify(s)));
-        }
+        function saveState() { historyStates.push(JSON.parse(JSON.stringify(s))); }
 
         function startTest(mode, deepDiveFreq) {
             initAudio();
@@ -87,14 +103,8 @@
             document.getElementById('mainMenu').style.display = 'none';
             document.getElementById('resultArea').style.display = 'none';
             document.getElementById('testArea').style.display = 'block';
-            
-            if (mode === 'deepdive') {
-                s.idx = 0; s.db = 0; s.ear = 'L';
-                currentFreqs = [deepDiveFreq];
-            } else {
-                s.idx = 0; s.db = 0; s.ear = 'L'; s.results = [];
-                currentFreqs = [...basicFreqs];
-            }
+            if (mode === 'deepdive') { s.idx = 0; s.db = 0; s.ear = 'L'; currentFreqs = [deepDiveFreq]; } 
+            else { s.idx = 0; s.db = 0; s.ear = 'L'; s.results = []; currentFreqs = [...basicFreqs]; }
             updateUI();
         }
 
@@ -104,8 +114,6 @@
             const et = document.getElementById('earTag');
             et.innerText = (s.ear === 'L' ? "VASEN" : "OIKEA") + " KORVA";
             et.style.color = s.ear === 'L' ? '#4da3ff' : '#ff4d4d';
-            
-            // Peruuta-nappi on päällä vain jos historiassa on jotain
             document.getElementById('backBtn').disabled = historyStates.length === 0;
         }
 
@@ -122,7 +130,7 @@
         function stopTone() { if (osc) { osc.stop(); osc.disconnect(); osc = null; } }
 
         function adjustDb(amount) {
-            saveState(); // Tallennetaan nykytila ennen muutosta
+            saveState();
             s.db += amount;
             if (s.db > 0) s.db = 0;
             if (s.db < -100) s.db = -100;
@@ -130,11 +138,10 @@
         }
 
         function recordFinal() {
-            saveState(); // Tallennetaan nykytila ennen siirtymistä seuraavaan ääneen
+            saveState();
             const freq = currentFreqs[s.idx % currentFreqs.length];
             s.results = s.results.filter(r => !(r.f === freq && r.e === s.ear));
             s.results.push({f: freq, e: s.ear, d: s.db});
-            
             if (s.mode === 'basic') {
                 if (s.ear === 'L') { s.ear = 'R'; s.db = 0; }
                 else { s.ear = 'L'; s.db = 0; s.idx++; }
@@ -145,12 +152,7 @@
             }
         }
 
-        function goBack() {
-            if (historyStates.length > 0) {
-                s = historyStates.pop(); // Haetaan edellinen tila
-                updateUI();
-            }
-        }
+        function goBack() { if (historyStates.length > 0) { s = historyStates.pop(); updateUI(); } }
 
         function finish() {
             document.getElementById('testArea').style.display = 'none';
@@ -175,30 +177,38 @@
                 type: 'line',
                 data: {
                     datasets: [
-                        { label: 'Vasen', data: s.results.filter(r=>r.e==='L').sort((a,b)=>a.f-b.f).map(r=>({x:r.f, y:r.d})), borderColor: 'blue', backgroundColor: 'blue', tension: 0, pointRadius: 5 },
-                        { label: 'Oikea', data: s.results.filter(r=>r.e==='R').sort((a,b)=>a.f-b.f).map(r=>({x:r.f, y:r.d})), borderColor: 'red', backgroundColor: 'red', tension: 0, pointRadius: 5 }
+                        { label: 'Vasen', data: s.results.filter(r=>r.e==='L').sort((a,b)=>a.f-b.f).map(r=>({x:r.f, y:r.d})), borderColor: 'blue', backgroundColor: 'blue', tension: 0, pointRadius: 6 },
+                        { label: 'Oikea', data: s.results.filter(r=>r.e==='R').sort((a,b)=>a.f-b.f).map(r=>({x:r.f, y:r.d})), borderColor: 'red', backgroundColor: 'red', tension: 0, pointRadius: 6 }
                     ]
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         x: { 
-                            type: 'logarithmic', 
-                            min: 100, max: 10000,
-                            grid: { color: '#ddd' }, 
+                            type: 'logarithmic', min: 100, max: 10000,
+                            grid: { color: '#ccc' }, 
                             ticks: { 
+                                font: { weight: 'bold' },
                                 callback: v => [125,250,500,1000,2000,4000,8000].includes(v) ? v+'Hz' : ''
                             } 
                         },
                         y: { 
                             reverse: true, min: -100, max: 0, 
-                            ticks: { stepSize: 10, autoSkip: false }, 
-                            grid: { color: '#ccc' } 
+                            ticks: { stepSize: 10, autoSkip: false, font: { weight: 'bold' } }, 
+                            grid: { color: '#bbb', lineWidth: 1.5 } 
                         }
                     }
                 }
             });
         }
+
+        // Pakotetaan kaavion päivitys kun puhelinta käännetään
+        window.addEventListener("orientationchange", function() {
+            if (document.getElementById('resultArea').style.display === 'block') {
+                setTimeout(drawChart, 300);
+            }
+        });
     </script>
 </body>
 </html>
