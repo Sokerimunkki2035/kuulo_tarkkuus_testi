@@ -3,58 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Focus v25.2 - Suomi-Luonto</title>
+    <title>Focus v25.2 - Satakunta Nature Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: sans-serif; max-width: 650px; margin: 0 auto; padding: 20px; background: #050505; color: #eee; text-align: center; }
         .card { background: #111; padding: 30px; border-radius: 25px; border: 1px solid #222; margin-top: 20px; }
-        .btn { border: none; padding: 20px; border-radius: 15px; cursor: pointer; font-size: 1.1em; font-weight: bold; width: 100%; margin: 8px 0; color: white; }
+        .btn { border: none; padding: 20px; border-radius: 15px; cursor: pointer; font-size: 1.1em; font-weight: bold; width: 100%; margin: 8px 0; color: white; transition: 0.1s; }
         .btn-blue { background: #0056b3; }
-        .chart-container { background: #fff; border-radius: 15px; padding: 15px; margin-top: 20px; display: none; height: 550px; width: 100%; position: relative; }
-        #info-text { color: #555; font-size: 0.9em; margin-top: 5px; }
-        
-        @media (orientation: landscape) {
-            .chart-container { height: 90vh; }
-        }
+        .btn-green { background: #1e7e34; }
+        .btn-orange { background: #d39e00; }
+        .btn-red { background: #bd2130; }
+        .btn-gray { background: #333; font-size: 0.9em; }
+        .btn-gray:disabled { opacity: 0.3; }
+        #display { font-size: 3.5em; font-weight: bold; margin: 15px 0; color: #007bff; }
+        .db-info { font-size: 1.8em; color: #fff; background: #222; padding: 10px; border-radius: 10px; margin-bottom: 15px; }
+        .chart-container { background: #fff; border-radius: 15px; padding: 15px; margin-top: 20px; display: none; height: 500px; width: 100%; }
+        .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .nature-list { text-align: left; background: #222; padding: 15px; border-radius: 15px; margin-top: 10px; }
+        .nature-item { display: flex; justify-content: space-between; align-items: center; margin: 5px 0; border-bottom: 1px solid #333; padding: 5px 0; }
     </style>
 </head>
 <body>
 
     <div id="mainMenu" class="card">
         <h1>Focus v25.2</h1>
-        <p>Mukana Satakunnan luonnon ja arjen äänet.</p>
-        <button onclick="startTest('basic')" class="btn btn-blue">ALOITA TESTI</button>
+        <p>Lääketieteellinen dB HL -asteikko.<br>Sisältää Suomen luonnon vertailuäänet.</p>
+        <button onclick="startTest()" class="btn btn-blue">ALOITA TESTI</button>
     </div>
 
     <div id="testArea" class="card" style="display:none;">
-        <div id="display" style="font-size: 3em;">1000 Hz</div>
-        <div id="dbDisplay" style="font-size: 2em; margin-bottom: 20px;">0 dB</div>
-        <button onmousedown="playTone()" onmouseup="stopTone()" ontouchstart="playTone()" ontouchend="stopTone()" class="btn btn-blue" style="height:100px; width:100%;">SOITA ÄÄNI</button>
-        <button onclick="recordFinal()" class="btn" style="background: #bd2130; margin-top: 20px;">TÄMÄ ON RAJA</button>
+        <div id="earTag" style="font-weight:bold; font-size: 1.3em; color: #4da3ff;">VASEN KORVA</div>
+        <div id="display">1000 Hz</div>
+        <div id="dbDisplay" class="db-info">0 dB HL</div>
+        
+        <button onmousedown="playTone()" onmouseup="stopTone()" ontouchstart="playTone()" ontouchend="stopTone()" class="btn btn-blue" style="height: 120px; font-size: 1.6em; margin-bottom: 20px;">SOITA ÄÄNI</button>
+        
+        <div class="control-grid">
+            <button onclick="adjustDb(-5)" class="btn btn-orange">KOVENNA (+5 dB)</button>
+            <button onclick="adjustDb(5)" class="btn btn-green">HILJENNÄ (-5 dB)</button>
+        </div>
+        
+        <button onclick="recordFinal()" class="btn btn-red" style="padding: 25px;">TÄMÄ ON RAJA</button>
+        
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button onclick="goBack()" id="backBtn" class="btn btn-gray" style="flex:1;">PERUUTA</button>
+            <button onclick="location.reload()" class="btn btn-gray" style="flex:1;">KESKEYTÄ</button>
+        </div>
     </div>
 
     <div id="resultArea" class="card" style="display:none;">
-        <h2 style="color: white;">Kuulokäyrä ja luonnon äänet</h2>
-        <div id="info-text">Klikkaa kuvakkeita kuullaksesi esimerkin äänestä.</div>
+        <h2 style="color: white;">Kuulokäyrä (dB HL)</h2>
         <div class="chart-container">
             <canvas id="resultChart"></canvas>
         </div>
+        
+        <div class="nature-list">
+            <strong style="color: #007bff;">Kuuntele vertailuääniä:</strong>
+            <div class="nature-item"><span>Hippiäinen (8000 Hz)</span> <button onclick="playExample(8000, 15)" class="btn-blue" style="padding:5px 10px; border-radius:5px;">Soita</button></div>
+            <div class="nature-item"><span>Sinitiainen (4000 Hz)</span> <button onclick="playExample(4000, 20)" class="btn-blue" style="padding:5px 10px; border-radius:5px;">Soita</button></div>
+            <div class="nature-item"><span>Palovaroitin (3000 Hz)</span> <button onclick="playExample(3000, 80)" class="btn-blue" style="padding:5px 10px; border-radius:5px;">Soita</button></div>
+        </div>
+
         <button onclick="location.reload()" class="btn btn-blue" style="margin-top:20px;">VALIKKOON</button>
     </div>
 
     <script>
         let audioCtx, gainNode, pannerNode, osc;
-        let s = { results: [], db: -100, idx: 0, ear: 'L' };
         const freqs = [125, 250, 500, 1000, 2000, 4000, 8000];
-
-        // MÄÄRITETÄÄN SUOMI-ÄÄNET
-        const natureSounds = [
-            { f: 8000, d: 15, label: 'Hippiäinen 🐦', desc: 'Suomen korkein linnunlaulu' },
-            { f: 4000, d: 20, label: 'Sinitiainen 🐦', desc: 'Korkea viserrys' },
-            { f: 3000, d: 80, label: 'Palovaroitin 🚨', desc: 'Hälytysääni' },
-            { f: 500, d: 65, label: 'Mopo 🛵', desc: 'Moottorin pärinä' },
-            { f: 250, d: 35, label: 'Jääkaappi ❄️', desc: 'Matala hurina' }
-        ];
+        let historyStates = [];
+        let s = { ear: 'L', idx: 0, db: -100, results: [] };
 
         function initAudio() {
             if (!audioCtx) {
@@ -65,17 +82,7 @@
             }
         }
 
-        function playExample(f, d) {
-            initAudio();
-            const o = audioCtx.createOscillator();
-            const g = audioCtx.createGain();
-            o.frequency.value = f;
-            // Muunnetaan HL-desibelit takaisin koneen ymmärtämäksi voimakkuudeksi
-            g.gain.setValueAtTime(Math.pow(10, (d - 100) / 20), audioCtx.currentTime);
-            o.connect(g).connect(audioCtx.destination);
-            o.start();
-            o.stop(audioCtx.currentTime + 1); // Soitetaan 1 sekunti
-        }
+        function saveState() { historyStates.push(JSON.parse(JSON.stringify(s))); }
 
         function startTest() {
             initAudio();
@@ -86,88 +93,9 @@
 
         function updateUI() {
             document.getElementById('display').innerText = freqs[s.idx] + " Hz";
-            document.getElementById('dbDisplay').innerText = (s.db + 100) + " dB";
-        }
-
-        function playTone() {
-            if (osc) return;
-            osc = audioCtx.createOscillator();
-            osc.frequency.value = freqs[s.idx];
-            gainNode.gain.setValueAtTime(Math.pow(10, s.db/20), audioCtx.currentTime);
-            osc.connect(gainNode);
-            osc.start();
-        }
-
-        function stopTone() { if (osc) { osc.stop(); osc.disconnect(); osc = null; } }
-
-        function recordFinal() {
-            s.results.push({f: freqs[s.idx], d: s.db + 100});
-            s.idx++;
-            if (s.idx >= freqs.length) finish(); else { s.db = -100; updateUI(); }
-        }
-
-        function finish() {
-            document.getElementById('testArea').style.display = 'none';
-            document.getElementById('resultArea').style.display = 'block';
-            document.querySelector('.chart-container').style.display = 'block';
-            drawChart();
-        }
-
-        function drawChart() {
-            const ctx = document.getElementById('resultChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    datasets: [{
-                        label: 'Sinun kuulosi',
-                        data: s.results.map(r => ({x: r.f, y: r.d})),
-                        borderColor: 'blue',
-                        pointRadius: 8
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    onClick: (e, elements, chart) => {
-                        // Tarkistetaan osuiko klikkaus johonkin luonnon ääneen (tämä on yksinkertaistettu demo)
-                        const xValue = chart.scales.x.getValueForPixel(e.x);
-                        natureSounds.forEach(sound => {
-                            if (Math.abs(sound.f - xValue) < (sound.f * 0.2)) {
-                                playExample(sound.f, sound.d);
-                            }
-                        });
-                    },
-                    scales: {
-                        x: { type: 'logarithmic', min: 100, max: 10000 },
-                        y: { reverse: true, min: 0, max: 100 }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                footer: () => "Klikkaa kaaviota kuullaksesi esimerkkejä"
-                            }
-                        }
-                    }
-                },
-                plugins: [{
-                    id: 'overlay',
-                    afterDraw: (chart) => {
-                        const {ctx, scales: {x, y}} = chart;
-                        natureSounds.forEach(sound => {
-                            const xPos = x.getPixelForValue(sound.f);
-                            const yPos = y.getPixelForValue(sound.d);
-                            ctx.fillStyle = 'rgba(0,0,0,0.6)';
-                            ctx.font = '12px Arial';
-                            ctx.fillText(sound.label, xPos - 20, yPos - 10);
-                            ctx.beginPath();
-                            ctx.arc(xPos, yPos, 4, 0, Math.PI * 2);
-                            ctx.fill();
-                        });
-                    }
-                }]
-            });
-        }
-    </script>
-</body>
-</html>
+            document.getElementById('dbDisplay').innerText = (s.db + 100) + " dB HL";
+            const et = document.getElementById('earTag');
+            et.innerText = (s.ear === 'L' ? "VASEN" : "OIKEA") + " KORVA";
+            et.style.color = s.ear === 'L' ? '#4da3ff' : '#ff4d4d';
+            document.getElementById('backBtn').disabled = historyStates.
  
