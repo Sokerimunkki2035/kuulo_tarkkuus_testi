@@ -97,5 +97,75 @@
             const et = document.getElementById('earTag');
             et.innerText = (s.ear === 'L' ? "VASEN" : "OIKEA") + " KORVA";
             et.style.color = s.ear === 'L' ? '#4da3ff' : '#ff4d4d';
-            document.getElementById('backBtn').disabled = historyStates.
+            document.getElementById('backBtn').disabled = historyStates.length === 0;
+        }
+
+        function playTone() {
+            if (osc) return;
+            osc = audioCtx.createOscillator();
+            osc.frequency.value = freqs[s.idx];
+            pannerNode.pan.value = s.ear === 'L' ? -1 : 1;
+            gainNode.gain.setValueAtTime(Math.pow(10, s.db/20), audioCtx.currentTime);
+            osc.connect(gainNode);
+            osc.start();
+        }
+
+        function stopTone() { if (osc) { osc.stop(); osc.disconnect(); osc = null; } }
+
+        function adjustDb(amount) {
+            saveState();
+            s.db -= (amount * -1); // Käännetty logiikka: kovempaa = lähemmäs nollaa
+            s.db = Math.max(-100, Math.min(0, s.db));
+            updateUI();
+        }
+
+        function recordFinal() {
+            saveState();
+            s.results.push({f: freqs[s.idx], e: s.ear, d: s.db + 100});
+            if (s.ear === 'L') { s.ear = 'R'; s.db = -100; }
+            else { s.ear = 'L'; s.db = -100; s.idx++; }
+            if (s.idx >= freqs.length) finish(); else updateUI();
+        }
+
+        function goBack() { if (historyStates.length > 0) { s = historyStates.pop(); updateUI(); } }
+
+        function playExample(f, d) {
+            initAudio();
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.frequency.value = f;
+            g.gain.setValueAtTime(Math.pow(10, (d - 100) / 20), audioCtx.currentTime);
+            o.connect(g).connect(audioCtx.destination);
+            o.start();
+            o.stop(audioCtx.currentTime + 1.5);
+        }
+
+        function finish() {
+            document.getElementById('testArea').style.display = 'none';
+            document.getElementById('resultArea').style.display = 'block';
+            document.querySelector('.chart-container').style.display = 'block';
+            drawChart();
+        }
+
+        function drawChart() {
+            const ctx = document.getElementById('resultChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        { label: 'Vasen', data: s.results.filter(r=>r.e==='L').map(r=>({x:r.f, y:r.d})), borderColor: 'blue', backgroundColor: 'blue', tension: 0 },
+                        { label: 'Oikea', data: s.results.filter(r=>r.e==='R').map(r=>({x:r.f, y:r.d})), borderColor: 'red', backgroundColor: 'red', tension: 0 }
+                    ]
+                },
+                options: {
+                    scales: {
+                        x: { type: 'logarithmic', min: 100, max: 10000, ticks: { callback: v => v + "Hz" } },
+                        y: { reverse: true, min: 0, max: 100, title: { display: true, text: 'dB HL' } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
  
