@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Focus v25.0 - Itsmyid Oy</title>
+    <title>Focus v25.1 - Itsmyid Oy</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: sans-serif; max-width: 650px; margin: 0 auto; padding: 20px; background: #050505; color: #eee; text-align: center; }
@@ -18,13 +18,14 @@
         .db-info { font-size: 1.4em; color: #666; margin-bottom: 15px; }
         .chart-container { background: #fff; border-radius: 15px; padding: 15px; margin-top: 20px; display: none; }
         .deep-dive-selector { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 20px; }
+        .nav-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
     </style>
 </head>
 <body>
 
     <div id="mainMenu" class="card">
-        <h1>Focus v25.0</h1>
-        <p>Tarkka 10 dB ruudukko ja Syväsukellus.</p>
+        <h1>Focus v25.1</h1>
+        <p>Itsmyid Precision Tool</p>
         <button onclick="startTest('basic')" class="btn btn-blue">ALOITA PERUSTESTI (7 ääntä)</button>
     </div>
 
@@ -42,7 +43,11 @@
             <button onclick="recordHeard('barely')" class="btn btn-orange">VÄHÄN</button>
             <button onclick="recordHeard('none')" class="btn btn-red">EN</button>
         </div>
-        <button onclick="cancelDeepDive()" class="btn btn-gray" id="cancelDeepDiveBtn" style="display:none; margin-top: 15px;">PERUUTA SYVÄSUKELLUS</button>
+
+        <div class="nav-controls">
+            <button onclick="goBack()" id="backBtn" class="btn btn-gray">PALAA TAKAISIN</button>
+            <button onclick="cancelTest()" class="btn btn-gray">KESKEYTÄ</button>
+        </div>
     </div>
 
     <div id="resultArea" class="card" style="display:none;">
@@ -63,11 +68,10 @@
         let audioCtx, gainNode, pannerNode, osc;
         const basicFreqs = [125, 250, 500, 1000, 2000, 4000, 8000];
         let currentFreqs = [...basicFreqs];
+        let historyStates = []; 
         
         let s = { 
-            mode: 'basic', // 'basic' tai 'deepdive'
-            ear: 'L', idx: 0, db: 0, 
-            results: [] // [{f, e, d}, ...]
+            mode: 'basic', ear: 'L', idx: 0, db: 0, results: [] 
         };
 
         function initAudio() {
@@ -82,18 +86,17 @@
         function startTest(mode, deepDiveFreq) {
             initAudio();
             s.mode = mode;
+            historyStates = [];
             document.getElementById('mainMenu').style.display = 'none';
             document.getElementById('resultArea').style.display = 'none';
             document.getElementById('testArea').style.display = 'block';
             
             if (mode === 'deepdive') {
-                s.idx = 0; s.db = 0; // Aloitetaan alusta valitulle taajuudelle
+                s.idx = 0; s.db = 0; s.ear = 'L';
                 currentFreqs = [deepDiveFreq];
-                document.getElementById('cancelDeepDiveBtn').style.display = 'block';
             } else {
                 s.idx = 0; s.db = 0; s.ear = 'L'; s.results = [];
                 currentFreqs = [...basicFreqs];
-                document.getElementById('cancelDeepDiveBtn').style.display = 'none';
             }
             updateUI();
         }
@@ -105,6 +108,7 @@
             const et = document.getElementById('earTag');
             et.innerText = (s.ear === 'L' ? "VASEN" : "OIKEA") + " KORVA";
             et.style.color = s.ear === 'L' ? '#4da3ff' : '#ff4d4d';
+            document.getElementById('backBtn').disabled = historyStates.length === 0;
         }
 
         function playTone() {
@@ -120,6 +124,8 @@
         function stopTone() { if (osc) { osc.stop(); osc.disconnect(); osc = null; } }
 
         function recordHeard(type) {
+            historyStates.push(JSON.parse(JSON.stringify(s)));
+
             if (type === 'clearly') { s.db -= 10; updateUI(); }
             else if (type === 'barely') { s.db -= 4; updateUI(); }
             else {
@@ -128,37 +134,31 @@
             }
         }
 
+        function goBack() {
+            if (historyStates.length > 0) {
+                s = historyStates.pop();
+                updateUI();
+            }
+        }
+
         function saveResult() {
             const freq = currentFreqs[s.idx % currentFreqs.length];
-            // Poistetaan vanha tulos samalle taajuudelle/korvalle, jos olemassa
             s.results = s.results.filter(r => !(r.f === freq && r.e === s.ear));
             s.results.push({f: freq, e: s.ear, d: s.db});
         }
 
         function nextStep() {
             if (s.mode === 'basic') {
-                if (s.ear === 'L') {
-                    s.ear = 'R';
-                    s.db = 0;
-                } else {
-                    s.ear = 'L';
-                    s.db = 0;
-                    s.idx++;
-                }
-                if (s.idx >= currentFreqs.length) finishBasic(); else updateUI();
+                if (s.ear === 'L') { s.ear = 'R'; s.db = 0; }
+                else { s.ear = 'L'; s.db = 0; s.idx++; }
+                if (s.idx >= currentFreqs.length) finishTest(); else updateUI();
             } else {
-                // Deep Dive: tehty yksi taajuus molemmille korville
-                if (s.ear === 'L') {
-                    s.ear = 'R';
-                    s.db = 0;
-                    updateUI();
-                } else {
-                    finishDeepDive();
-                }
+                if (s.ear === 'L') { s.ear = 'R'; s.db = 0; updateUI(); }
+                else { finishTest(); }
             }
         }
 
-        function finishBasic() {
+        function finishTest() {
             document.getElementById('testArea').style.display = 'none';
             document.getElementById('resultArea').style.display = 'block';
             document.getElementById('chartBox').style.display = 'block';
@@ -166,17 +166,7 @@
             setupDeepDive();
         }
 
-        function finishDeepDive() {
-            document.getElementById('testArea').style.display = 'none';
-            document.getElementById('resultArea').style.display = 'block';
-            document.getElementById('chartBox').style.display = 'block';
-            drawChart();
-        }
-
-        function cancelDeepDive() {
-            document.getElementById('testArea').style.display = 'none';
-            document.getElementById('resultArea').style.display = 'block';
-        }
+        function cancelTest() { location.reload(); }
 
         function setupDeepDive() {
             const container = document.getElementById('deepDiveButtons');
@@ -190,20 +180,22 @@
             });
         }
 
+        let chartInstance = null;
         function drawChart() {
             const ctx = document.getElementById('resultChart').getContext('2d');
-            new Chart(ctx, {
+            if (chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     datasets: [
-                        { label: 'Vasen (L)', data: s.results.filter(r=>r.e==='L').map(r=>({x:r.f, y:r.d})), borderColor: '#4da3ff', backgroundColor: '#4da3ff', tension: 0, fill: false },
-                        { label: 'Oikea (R)', data: s.results.filter(r=>r.e==='R').map(r=>({x:r.f, y:r.d})), borderColor: '#ff4d4d', backgroundColor: '#ff4d4d', tension: 0, fill: false }
+                        { label: 'Vasen (L)', data: s.results.filter(r=>r.e==='L').sort((a,b)=>a.f-b.f).map(r=>({x:r.f, y:r.d})), borderColor: 'blue', backgroundColor: 'blue', tension: 0 },
+                        { label: 'Oikea (R)', data: s.results.filter(r=>r.e==='R').sort((a,b)=>a.f-b.f).map(r=>({x:r.f, y:r.d})), borderColor: 'red', backgroundColor: 'red', tension: 0 }
                     ]
                 },
                 options: {
                     scales: {
                         x: { type: 'logarithmic', grid: { color: '#ccc' }, ticks: { callback: v => v + 'Hz', color: '#333' } },
-                        y: { reverse: true, min: -100, max: 0, ticks: { stepSize: 10, color: '#333' }, grid: { color: '#eee' } }
+                        y: { reverse: true, min: -100, max: 0, ticks: { stepSize: 10, color: '#333' }, grid: { color: '#bbb' } }
                     }
                 }
             });
@@ -211,4 +203,3 @@
     </script>
 </body>
 </html>
- 
